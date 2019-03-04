@@ -1,0 +1,47 @@
+apply plugin: 'groovy'
+
+import groovy.sql.Sql
+
+configurations {
+    driver
+}
+
+dependencies {
+    driver 'mysql:mysql-connector-java:8.0.15'
+}
+URLClassLoader loader = GroovyObject.class.classLoader
+    configurations.driver.each {File file ->
+    loader.addURL(file.toURI().toURL())
+}
+//执行sql命令测试
+task executeSql << {
+    def mysql = Sql.newInstance("jdbc:mysql://192.168.2.52:3306/dmp?useUnicode=true&characterEncoding=utf8",
+            "liangzhi",
+            "liangzhi123",
+            "com.mysql.cj.jdbc.Driver")
+    try {
+        file("../web/database_init.sql").text.split(";").each {
+            println it
+            mysql.execute it
+        }
+        //读取多个文件执行
+/*        def files = file("data").listFiles().sort()
+        files.each {File file ->
+            println file.name
+            if (file.isFile()){
+                file.text.split(";").each{
+                    println it
+                    mysql.execute it
+                }
+            }
+        }*/
+        mysql.close()
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+} as String
+
+task executeShell (type:Exec){
+    commandLine "echo","src/main/resources/Iprotocol_bz.txt"
+    commandLine "echo","src/main/java/com/caiqr/caipiao/wsdl/hecai/Iprotocol_bz.txt"
+}

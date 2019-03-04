@@ -1,0 +1,10 @@
+
+version=1.1
+
+dependencies {
+
+    runtimeOnly 'com.oracle:ojdbc14:10.2.0.4.0'
+    runtimeOnly 'mysql:mysql-connector-java:+'
+    runtimeOnly 'com.microsoft.sqlserver:mssql-jdbc:7.2.1.jre8'
+    runtimeOnly 'org.postgresql:postgresql:42.2.5.jre7'
+}
