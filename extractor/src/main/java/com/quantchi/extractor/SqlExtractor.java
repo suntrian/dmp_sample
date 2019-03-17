@@ -6,6 +6,8 @@ import java.util.Map;
 
 public interface SqlExtractor {
 
+  List<Map<String, Object>> explain(String sql) throws SQLException;
+
   List<Object[]> extractArray(String sql) throws SQLException;
 
   List<Object[]> extractArray(String sql, Object... args) throws SQLException;

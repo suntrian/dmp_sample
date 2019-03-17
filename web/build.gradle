@@ -29,8 +29,8 @@ dependencies {
     implementation project(':extractor')
 
     implementation('org.springframework.boot:spring-boot-starter')
-    //implementation('org.springframework.boot:spring-boot-starter-web')
-    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation('org.springframework.boot:spring-boot-starter-web')
+    //mplementation 'org.springframework.boot:spring-boot-starter-webflux'
     implementation('org.springframework.boot:spring-boot-starter-aop')
     implementation('org.springframework.boot:spring-boot-starter-validation')
     runtimeOnly('org.springframework.boot:spring-boot-devtools')
@@ -43,4 +43,5 @@ dependencies {
     implementation 'org.apache.shiro:shiro-spring:1.4.0'
     compile 'io.jsonwebtoken:jjwt-api:0.10.6'
     runtime 'io.jsonwebtoken:jjwt-impl:0.10.6'
+    runtimeOnly 'org.postgresql:postgresql:42.2.5.jre7'
 }

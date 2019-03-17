@@ -38,7 +38,7 @@ subprojects {
         implementation 'joda-time:joda-time:2.10.1'
         compileOnly 'org.projectlombok:lombok:1.18.4'
         testImplementation 'junit:junit:4.13-beta-2'
-        runtimeOnly 'org.postgresql:postgresql:42.2.5.jre7'
+        
     }
 
 

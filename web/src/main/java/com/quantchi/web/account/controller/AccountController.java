@@ -21,7 +21,7 @@ public class AccountController {
     @Autowired
     private UserService userService;
 
-    @RequiresPermissions("")
+//    @RequiresPermissions("")
     @GetMapping("/welcome")
     public ResultDto welcome(){
         return ResultDto.success(Arrays.asList(
@@ -49,7 +49,7 @@ public class AccountController {
         return ResultDto.success("");
     }
 
-    @RequiresUser
+//    @RequiresUser
     @PostMapping(value = "/logout")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void logout(){

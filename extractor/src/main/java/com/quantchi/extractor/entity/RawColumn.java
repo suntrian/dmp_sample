@@ -2,6 +2,8 @@ package com.quantchi.extractor.entity;
 
 import lombok.Data;
 
+import java.io.Serializable;
+
 /**
  * @see java.sql.DatabaseMetaData#getColumns(String, String, String, String)
  *  <OL>
@@ -62,7 +64,7 @@ import lombok.Data;
  *  </OL>
  */
 @Data
-public class RawColumn {
+public class RawColumn implements Serializable {
   private String TABLE_CAT;
   private String TABLE_SCHEM;
   private String TABLE_NAME;

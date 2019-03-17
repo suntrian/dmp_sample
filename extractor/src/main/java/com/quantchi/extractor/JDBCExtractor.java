@@ -3,13 +3,11 @@ package com.quantchi.extractor;
 import com.quantchi.extractor.datasource.DatasourceResolver;
 import com.quantchi.extractor.datasource.DriverType;
 import com.quantchi.extractor.entity.*;
-import com.quantchi.extractor.extractimpl.AbstractMetaDataExtractor;
-import com.quantchi.extractor.extractimpl.AbstractSqlExtractor;
+import com.quantchi.extractor.executor.*;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -19,16 +17,21 @@ public class JDBCExtractor implements MetaDataExtractor, SqlExtractor {
     @Getter
     private Connection connection;
 
-    @Getter
-    private DatabaseMetaData databaseMetaData;
+    private DriverType driverType;
+
+    private JdbcMetaDataExtractor extractor;
 
     public JDBCExtractor(String url, String username, String password) throws SQLException, ClassNotFoundException {
+        this.driverType = DriverType.judgeDriver(url);
         this.connection = DatasourceResolver.getConnection(url, username, password);
+        this.extractor = determineExtractor(driverType);
     }
 
     public JDBCExtractor(DriverType driver, String host, Integer port, String database, String username, String password)
             throws SQLException, ClassNotFoundException {
+        this.driverType = driver;
         this.connection = DatasourceResolver.getConnection(driver, host, port, database, username, password);
+        this.extractor = determineExtractor(driverType);
     }
 
     /**
@@ -41,10 +44,7 @@ public class JDBCExtractor implements MetaDataExtractor, SqlExtractor {
      */
     @Override
     public List<RawDatabase> extractDatabase() throws SQLException {
-        if (this.databaseMetaData==null){
-            this.databaseMetaData = DatasourceResolver.getDatabaseMetaData(this.connection);
-        }
-        return AbstractMetaDataExtractor.extractDatabase(this.databaseMetaData);
+        return this.extractor.extractDatabase(this.connection);
     }
 
     @Override
@@ -57,10 +57,7 @@ public class JDBCExtractor implements MetaDataExtractor, SqlExtractor {
                                        @Nullable String schemaPattern,
                                        @Nullable String tableNamePattern,
                                        @Nullable String... types) throws SQLException {
-        if (this.databaseMetaData==null){
-            this.databaseMetaData = DatasourceResolver.getDatabaseMetaData(this.connection);
-        }
-        return AbstractMetaDataExtractor.extractTable(this.databaseMetaData, catalog, schemaPattern, tableNamePattern,types);
+        return this.extractor.extractTable(connection, catalog, schemaPattern, tableNamePattern, types);
     }
 
     public List<RawColumn> extractColumn() throws SQLException {
@@ -72,10 +69,7 @@ public class JDBCExtractor implements MetaDataExtractor, SqlExtractor {
                                          @Nullable String schemaPattern,
                                          @Nullable String tableNamePattern,
                                          @Nullable String columnNamePattern) throws SQLException {
-        if (this.databaseMetaData==null){
-            this.databaseMetaData = DatasourceResolver.getDatabaseMetaData(this.connection);
-        }
-        return AbstractMetaDataExtractor.extractColumn(this.databaseMetaData, catalog, schemaPattern, tableNamePattern, columnNamePattern);
+        return this.extractor.extractColumn(connection, catalog, schemaPattern, tableNamePattern, columnNamePattern);
     }
 
     public List<RawPrimaryKey> extractPrimaryKey(String tableName) throws SQLException {
@@ -86,10 +80,7 @@ public class JDBCExtractor implements MetaDataExtractor, SqlExtractor {
     public List<RawPrimaryKey> extractPrimaryKey(@Nullable String catalog,
                                                  @Nullable String schema,
                                                  String tableName) throws SQLException {
-        if (this.databaseMetaData==null){
-            this.databaseMetaData = DatasourceResolver.getDatabaseMetaData(this.connection);
-        }
-        return AbstractMetaDataExtractor.extractPrimaryKey(this.databaseMetaData, catalog, schema, tableName);
+        return this.extractor.extractPrimaryKey(connection, catalog, schema, tableName);
     }
 
     public List<RawIndexInfo> extractIndexInfo(String tableName,
@@ -104,55 +95,83 @@ public class JDBCExtractor implements MetaDataExtractor, SqlExtractor {
                                                String tableName,
                                                boolean unique,
                                                boolean approximate) throws SQLException {
-        if (this.databaseMetaData==null){
-            this.databaseMetaData = DatasourceResolver.getDatabaseMetaData(this.connection);
-        }
-        return AbstractMetaDataExtractor.extractIndexInfo(this.databaseMetaData, catalog, schema, tableName, unique, approximate);
+        return this.extractor.extractIndexInfo(connection, catalog, schema, tableName, unique, approximate);
     }
 
     @Override
     public List<RawForeignKeyInfo> extractExportedKey(@Nullable String catalog,
                                                       @Nullable String schema,
                                                       String table) throws SQLException {
-        if (this.databaseMetaData==null){
-            this.databaseMetaData = DatasourceResolver.getDatabaseMetaData(this.connection);
-        }
-        return AbstractMetaDataExtractor.extractExportedKey(this.databaseMetaData, catalog, schema, table);
+        return this.extractor.extractExportedKey(this.connection, catalog, schema, table);
     }
 
     @Override
     public List<RawForeignKeyInfo> extractImportedKey(@Nullable String catalog,
                                                       @Nullable String schema,
                                                       String table) throws SQLException {
-        if (this.databaseMetaData==null){
-            this.databaseMetaData = DatasourceResolver.getDatabaseMetaData(this.connection);
-        }
-        return AbstractMetaDataExtractor.extractImportedKey(this.databaseMetaData, catalog, schema, table);
+        return this.extractor.extractImportedKey(this.connection, catalog, schema, table);
     }
 
     @Override
     public List<Object[]> extractArray(String sql) throws SQLException {
-        return AbstractSqlExtractor.extractArray(this.connection, sql);
+        return this.extractor.extractArray(this.connection, sql);
     }
 
     @Override
     public List<Object[]> extractArray(String sql, Object... args) throws SQLException {
-        return AbstractSqlExtractor.extractArray(this.connection, sql, args);
+        return this.extractor.extractArray(this.connection, sql, args);
     }
 
     @Override
     public List<Map<String, Object>> extractMap(String sql) throws SQLException {
-        return AbstractSqlExtractor.extractMap(this.connection, sql);
+        return this.extractor.extractMap(this.connection, sql);
     }
 
     @Override
     public List<Map<String, Object>> extractMap(String sql, Object... args) throws SQLException {
-        return AbstractSqlExtractor.extractMap(this.connection, sql, args);
+        return this.extractor.extractMap(this.connection, sql, args);
+    }
+
+    @Override
+    public List<Map<String, Object>> explain( String sql) throws SQLException {
+        return this.extractor.explain(this.connection, sql);
+    }
+
+    public void close(){
+        if (this.extractor!=null){
+            this.extractor.close();
+        }
+        DatasourceResolver.close(this.connection);
     }
 
     @Override
     protected void finalize() {
-        DatasourceResolver.close(this.connection);
+        close();
+    }
+
+    private JdbcMetaDataExtractor determineExtractor(DriverType driverType){
+        if (driverType == null){
+            return DefaultJdbcMetaDataExtractor.newInstance();
+        }
+        switch (driverType){
+            case ORACLE:
+                return OracleJdbcMetaDataExtractor.newInstance();
+            case SQLSERVER:
+                return SQLServerJdbcMetaDataExtractor.newInstance();
+            case MYSQL:
+                return MySqlJdbcMetaDataExtractor.newInstance();
+            case POSTGRESQL:
+                return PostgresJdbcMetaDataExtractor.newInstance();
+            case DB2:
+                return DB2JdbcMetaDataExtractor.newInstance();
+            case HIVE:
+            case IMPALA:
+                return HiveJdbcMetaDataExtractor.newInstance();
+            case SYBASE:
+            case ODBC:
+            default:
+                return DefaultJdbcMetaDataExtractor.newInstance();
+        }
     }
 
 }

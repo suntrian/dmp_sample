@@ -12,6 +12,7 @@ public class Resource implements Serializable {
     private static final Integer STATUS_HIDDEN = StatusConstant.FORBIDDEN.getStatus();
 
     private static final String TYPE_MENU = "MENU";
+    private static final String TYPE_BUTTON = "BUTTON";
     private static final String TYPE_API = "API";
 
     private Integer id;

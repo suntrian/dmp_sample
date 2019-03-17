@@ -9,8 +9,8 @@ configurations {
 dependencies {
     driver 'mysql:mysql-connector-java:8.0.15'
 }
-URLClassLoader loader = GroovyObject.class.classLoader
-    configurations.driver.each {File file ->
+/*URLClassLoader loader = GroovyObject.class.classLoader
+configurations.driver.each {File file ->
     loader.addURL(file.toURI().toURL())
 }
 //执行sql命令测试
@@ -25,7 +25,7 @@ task executeSql << {
             mysql.execute it
         }
         //读取多个文件执行
-/*        def files = file("data").listFiles().sort()
+*//*        def files = file("data").listFiles().sort()
         files.each {File file ->
             println file.name
             if (file.isFile()){
@@ -34,12 +34,12 @@ task executeSql << {
                     mysql.execute it
                 }
             }
-        }*/
+        }*//*
         mysql.close()
     } catch (Exception e) {
         e.printStackTrace();
     }
-} as String
+} as String*/
 
 task executeShell (type:Exec){
     commandLine "echo","src/main/resources/Iprotocol_bz.txt"

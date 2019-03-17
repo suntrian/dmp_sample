@@ -1,14 +1,14 @@
 package com.quantchi.common.excel;
 
+import org.apache.poi.hssf.usermodel.HSSFFormulaEvaluator;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackageAccess;
+import org.apache.poi.poifs.filesystem.FileMagic;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.File;
@@ -19,55 +19,66 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
- * double, date, boolean 等等类型未测试
+ * @author suntri
+ * @since dmp 1.6.0
+ * 暂只支持输出pojo中的string, int ,double, long, date, boolean 等简单数据类型
  */
-@SuppressWarnings("all")
+@SuppressWarnings("unchecked")
 public class ExcelReader {
 
   private int sheetCount = 1;
+  private boolean isXlsx = true;
 
   private Workbook workbook;
+  private FormulaEvaluator formulaEvaluator;
   private POIFSFileSystem poifsFileSystem;
   private OPCPackage opcPackage;
 
   private List<Class> columnClass;
   private List<List<String>> excelColumns;
   private List<Map<String, Method>> classSetters;
+  //每个sheet的标题行数，读取内容时跳过标题行
   private List<Integer> titleRows;
-  //输出的sheet
+  //输出的sheet, 1 based
   private Set<Integer> sheetRead;
 
-  public ExcelReader setExcelClass(Class<?> clazz){
+  //此时间日期判断的正则表达式比较简单，没有判断更复杂的情况如2019-14-29 等也能匹配
+  private Pattern datetimePattern = Pattern.compile("(?:(?<year>(?:[1-9]\\d)?\\d{2})[/-])?(?<mon>[0-1]?\\d)[/-](?<day>[0-3]?\\d)\\s+(?<hour>[0-2]?\\d):(?<min>[0-5]?\\d)(?::(?<sec>[0-5]?\\d))?");
+  private Pattern datePattern = Pattern.compile("((?<year>(?:[1-9]\\d)?\\d{2})[/-])?(?<mon>[0-1]?\\d)[/-](?<day>[0-3]?\\d)");
+  private Pattern timePattern = Pattern.compile("(?<hour>[0-2]?\\d):(?<min>[0-5]?\\d)(?::(?<sec>[0-5]?\\d))?");
+
+  public ExcelReader setClass(Class<?> clazz){
     this.columnClass = setListValue(this.columnClass, -1, clazz, null, sheetCount);
     return this;
   }
 
-  public ExcelReader setExcelClasses( int sheetNum, Class<?> clazz){
+  public ExcelReader setClass( int sheetNum, Class<?> clazz){
     this.columnClass = setListValue(this.columnClass, sheetNum-1, clazz, null, sheetCount);
     return this;
   }
 
-  public ExcelReader setTitleRows(int titleRows){
-    this.titleRows = setListValue(this.titleRows, -1, titleRows, 0, sheetCount);
+  public ExcelReader setTitleRows(int skipRows){
+    this.titleRows = setListValue(this.titleRows, -1, skipRows, 0, sheetCount);
     return this;
   }
 
-  public ExcelReader setTitleRows(int sheetNum, int titleRows) {
-    this.titleRows = setListValue(this.titleRows, sheetNum-1, titleRows, 0, sheetCount);
+  public ExcelReader setTitleRows(int sheetNum, int skipRows){
+    this.titleRows = setListValue(this.titleRows, sheetNum-1, skipRows, 0, sheetCount);
     return this;
   }
 
-  public ExcelReader setSkipRows(Integer skipRows){
-    return setTitleRows(skipRows);
-  }
-
-  public ExcelReader setSkipRows(int sheetNum, int skipRows){
-    return setTitleRows(sheetNum, skipRows);
-  }
-
-  public ExcelReader setSheetToRead(Integer sheetNum){
+  /**
+   * 设置要读取的sheet, 不设置则默认读取全部
+   * @param sheetNum num
+   * @return
+   */
+  public ExcelReader setSheetRead(Integer sheetNum){
     if (this.sheetRead == null){
       this.sheetRead = new HashSet<>(sheetCount);
     }
@@ -75,7 +86,7 @@ public class ExcelReader {
     return this;
   }
 
-  public ExcelReader setSheetToRead(Integer... sheetNums){
+  public ExcelReader setSheetRead(Integer... sheetNums){
     if (this.sheetRead == null){
       this.sheetRead = new HashSet<>(sheetCount);
     }
@@ -106,47 +117,73 @@ public class ExcelReader {
   }
 
   public<T> List<T> read(File file) throws IOException, InvalidFormatException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
-    String suffix = fileExtension(file.getName());
-    switch (suffix.toLowerCase()){
-      case "xls":
-        return readXls(file, true);
-      case "xlsx":
-      case "xlsm":
-        return readXlsx(file, true);
-      case "":
+    init(file);
+    return parse();
+  }
+
+  /**
+   * use more memory then read from file or filechannel
+   * @param inputStream
+   * @param <T>
+   * @return
+   * @throws InvocationTargetException
+   * @throws NoSuchMethodException
+   * @throws InstantiationException
+   * @throws IllegalAccessException
+   * @throws IOException
+   */
+  public<T> List<T> read(InputStream inputStream) throws InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException, IOException {
+    init(inputStream);
+    return parse();
+  }
+
+  public <T> Stream<T> streamOf(File file) throws IOException, InvalidFormatException, NoSuchMethodException {
+    init(file);
+    if (sheetCount == 1){
+      return parseToStream(1);
+    } else if (sheetCount>1 &&  (this.sheetRead !=null && this.sheetRead.size() == 1)){
+      int sheetToRead = this.sheetRead.iterator().next();
+      return parseToStream(sheetToRead);
+    }
+    throw new IllegalArgumentException("unSupport to read dual sheet by Stream");
+  }
+
+  private void init(File file) throws IOException, InvalidFormatException {
+    String suffix = fileExtension(file.getName()).toLowerCase();
+    if (!(suffix.equals("xls") || suffix.equals("xlsx") || suffix.equals("xlsm") )){
+      throw new IllegalArgumentException("not excel extension");
+    }
+    switch (FileMagic.valueOf(file)){
+      case OLE2:
+        this.isXlsx = false;
+        this.poifsFileSystem = new POIFSFileSystem(file, true);
+        this.workbook = new HSSFWorkbook(poifsFileSystem);
+        break;
+      case OOXML:
+        this.isXlsx = true;
+        this.opcPackage = OPCPackage.open(file, PackageAccess.READ);
+        this.workbook = new XSSFWorkbook(this.opcPackage); // new SXSSFWorkbook(new XSSFWorkbook(this.opcPackage));  //SXSSFWorkbook 仅用于写文件，无法读取文件
+        break;
       default:
         throw new IllegalArgumentException("not excel extension");
     }
   }
 
-  protected <T> List<T> readXlsx(File file) throws IOException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
-    return readXls(file, true);
-  }
-
-  protected<T> List<T> readXlsx(File file, boolean readOnly) throws IOException, InvalidFormatException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
-    this.opcPackage = OPCPackage.open(file, readOnly?PackageAccess.READ:PackageAccess.READ_WRITE);
-    this.workbook = new XSSFWorkbook(this.opcPackage);
-    return parse();
-  }
-
-  protected<T> List<T> readXlsx(InputStream inputStream) throws IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
-    this.workbook = new XSSFWorkbook(inputStream);
-    return parse();
-  }
-
-  protected<T> List<T> readXls(InputStream inputStream) throws IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
-    this.workbook = new HSSFWorkbook(inputStream);
-    return parse();
-  }
-
-  protected<T> List<T> readXls(File file) throws IOException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
-    return readXls(file, true);
-  }
-
-  protected<T> List<T> readXls(File file, boolean readOnly) throws IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
-    this.poifsFileSystem = new POIFSFileSystem(file, readOnly);
-    this.workbook = new HSSFWorkbook(poifsFileSystem);
-    return parse();
+  private void init(InputStream inputStream) throws IOException {
+    inputStream = FileMagic.prepareToCheckMagic(inputStream);
+    switch (FileMagic.valueOf(inputStream)){
+      case OLE2:
+        this.isXlsx = false;
+        this.workbook = new HSSFWorkbook(inputStream);
+        break;
+      case OOXML:
+        this.isXlsx = true;
+        this.workbook = new XSSFWorkbook(inputStream);  //new SXSSFWorkbook(new XSSFWorkbook(inputStream));  //SXSSFWorkbook 仅用于写文件，无法读取文件
+        break;
+      default:
+        throw new IllegalArgumentException("not excel extension");
+    }
   }
 
   private void preHandler() throws NoSuchMethodException {
@@ -156,59 +193,76 @@ public class ExcelReader {
     }
     for (int i = 0; i < this.sheetCount; i++){
       Class clazz;
-      if ( (clazz = getListValue(this.columnClass, i, null)) == null){
+      if ( (clazz = getListValue(this.columnClass, i, null)) == null) {
         this.columnClass = setListValue(this.columnClass, i, ArrayList.class, ArrayList.class, this.sheetCount);
-      } else {
-        if (Map.class.isAssignableFrom(clazz)){
-          if (getListValue(this.excelColumns, i, Collections.emptyList()).size() == 0){
-            int titleRows;
-            if ((titleRows = getListValue(this.titleRows, i , 0)) == 0){
-              throw new IllegalStateException("请检查参数");
-            } else if (titleRows == 1){
-              //需检查是否存在数据
-              Row titleRow = this.workbook.getSheetAt(i).getRow(0);
-              List<String> titles = new ArrayList<>(titleRow.getLastCellNum());
-              for (int l = 0; l < titleRow.getLastCellNum(); l++){
-                titles.add(titleRow.getCell(l).getStringCellValue());
-              }
-              this.excelColumns = setListValue(this.excelColumns, i, titles, Collections.emptyList(), sheetCount);
-            }
+      } else if (List.class.isAssignableFrom(clazz)){
+        this.columnClass = setListValue(this.columnClass, i, clazz, clazz, this.sheetCount);
+      } else if (Map.class.isAssignableFrom(clazz)) {
+          //如果输出map且存在标题行，且没有设置输出的属性名的话，默认以标题行作为KEY
+        if (getListValue(this.excelColumns, i, Collections.emptyList()).size() == 0) {
+          int titleRows;
+          if ((titleRows = getListValue(this.titleRows, i, 0)) == 0) {
+            throw new IllegalStateException("please set one title rows or field names");
           }
-        } else if (Serializable.class.isAssignableFrom(clazz)){
-          List<String> columns;
-          if ( (columns = getListValue(this.excelColumns, i, Collections.emptyList())).size() == 0){
-            throw new IllegalStateException("未指定输出列的属性");
-          }
-          List<Method> methods = BeanUtil.getBeanSetters(clazz);
-          Map<String, Method> methodMap = new HashMap<>(columns.size());
-          OUT: for (String col: columns){
-            if (col == null || "".equals(col.trim())){
-              continue;
+          else if (titleRows == 1) {
+            //需检查是否存在数据
+            Row titleRow = this.workbook.getSheetAt(i).getRow(0);
+            List<String> titles = new ArrayList<>(titleRow.getLastCellNum());
+            for (int l = 0; l < titleRow.getLastCellNum(); l++) {
+              titles.add(titleRow.getCell(l).getStringCellValue());
             }
-            Iterator<Method> methodIter = methods.iterator();
-            while (methodIter.hasNext()){
-              Method method = methodIter.next();
-              if (method.getName().substring(3).equals(BeanUtil.capture(col))){
-                methodMap.put(col, method);
-                methodIter.remove();
-                continue OUT;
-              }
-            }
-            throw new NoSuchMethodException("未找到方法:" + col);
+            this.excelColumns = setListValue(this.excelColumns, i, titles, Collections.emptyList(), sheetCount);
+          } else {
+            throw new IllegalStateException("more than one title row exists");
           }
-          this.classSetters = setListValue(this.classSetters, i, methodMap, Collections.emptyMap(),sheetCount);
-        } else {
-
         }
+      } else if (Serializable.class.isAssignableFrom(clazz)) {
+        List<String> columns;
+        if ((columns = getListValue(this.excelColumns, i, Collections.emptyList())).size() == 0) {
+          throw new IllegalStateException("未指定输出列的属性");
+        }
+        List<Method> methods = BeanUtil.getBeanSetters(clazz);
+        Map<String, Method> methodMap = new HashMap<>(columns.size());
+        OUT:
+        for (String col : columns) {
+          if (col == null || "".equals(col.trim())) {
+            continue;
+          }
+          Iterator<Method> methodIter = methods.iterator();
+          while (methodIter.hasNext()) {
+            Method method = methodIter.next();
+            if (method.getName().substring(3).equals(BeanUtil.capture(col))) {
+              methodMap.put(col, method);
+              methodIter.remove();
+              continue OUT;
+            }
+          }
+          throw new NoSuchMethodException("未找到方法:" + col);
+        }
+        this.classSetters = setListValue(this.classSetters, i, methodMap, Collections.emptyMap(), sheetCount);
+      }
+      else {
+
       }
     }
   }
 
+  /**
+   *
+   * @param sheetNum 1 based
+   * @param <T>
+   * @return
+   * @throws IllegalAccessException
+   * @throws InvocationTargetException
+   * @throws InstantiationException
+   * @throws NoSuchMethodException
+   * @throws IOException
+   */
+  @SuppressWarnings("Duplicates")
   private <T>  List<T> parse(final int sheetNum) throws IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException, IOException {
     if (sheetNum > this.sheetCount){
       throw new IllegalArgumentException("sheet num overflow");
     }
-    preHandler();
     int sheetIndex = sheetNum -1;
     Class clazz;
     if ((clazz = getListValue(this.columnClass, sheetIndex, null))== null){
@@ -220,33 +274,76 @@ public class ExcelReader {
       }
     }
     Sheet sheet = this.workbook.getSheetAt(sheetIndex);
-    List<T> sheetData = new ArrayList<>(sheet.getLastRowNum());
+    int maxRowNum = sheet.getLastRowNum();    // 0 based row num
+    List<T> sheetData = new ArrayList<>(maxRowNum);
     Integer titleRows = getListValue(this.titleRows, sheetIndex, 0);
-    for (int rowIndex = titleRows; rowIndex < sheet.getLastRowNum(); rowIndex ++){
+    Class sheetClass = getListValue(this.columnClass, sheetIndex, null);
+    List<String> sheetColumns = getListValue(this.excelColumns, sheetIndex, Collections.emptyList());
+    Map<String, Method> sheetMethods = getListValue(this.classSetters, sheetIndex, Collections.emptyMap());
+    for (int rowIndex = titleRows; rowIndex <= maxRowNum; rowIndex ++){
       Row row = sheet.getRow(rowIndex);
-      T rowData = (T)readRow(row, getListValue(this.columnClass, sheetIndex, null),
-              getListValue(this.excelColumns, sheetIndex, Collections.emptyList()),
-              getListValue(this.classSetters, sheetIndex, Collections.emptyMap()));
+      T rowData = (T)readRow(row, sheetClass, sheetColumns, sheetMethods);
       sheetData.add(rowData);
     }
     postHandler();
     return sheetData;
   }
 
+  @SuppressWarnings("Duplicates")
+  private<T> Stream<T> parseToStream(final int sheetNum) throws NoSuchMethodException {
+    if (!this.isXlsx){
+      throw new IllegalStateException("unSupport to stream");
+    }
+    preHandler();
+    if (sheetNum > this.sheetCount){ throw new IllegalArgumentException("sheet num overflow"); }
+    int sheetIndex = sheetNum -1;
+    final Class<T> sheetClass = getListValue(this.columnClass, sheetIndex, null);
+    final List<String> sheetColumns = getListValue(this.excelColumns, sheetIndex, Collections.emptyList());
+    final Map<String, Method> sheetMethods = getListValue(this.classSetters, sheetIndex, Collections.emptyMap());
+    if ( sheetClass == null){ throw new IllegalStateException("un given data type"); }
+    if (!List.class.isAssignableFrom(sheetClass)){
+      if (sheetColumns.size() == 0){
+        throw new IllegalArgumentException("un given properties");
+      }
+      if (Map.class.isAssignableFrom(sheetClass)){
+
+      } else if (Serializable.class.isAssignableFrom(sheetClass)){
+        if (sheetMethods.size() == 0){
+          throw new IllegalStateException("property set method not found");
+        }
+      }
+    }
+    Sheet sheet = this.workbook.getSheetAt(sheetIndex);
+    int titleRows = getListValue(this.titleRows, sheetIndex, 0);
+    Stream<T> stream = StreamSupport.stream(Spliterators.spliteratorUnknownSize(sheet.rowIterator(), 0), false)
+        .skip(titleRows)
+        .map(i-> {
+          try {
+            return readRow(i, sheetClass, sheetColumns, sheetMethods );
+          } catch (IllegalAccessException | InvocationTargetException | InstantiationException e) {
+            e.printStackTrace();
+          }
+          return null;
+        });
+    return stream;
+  }
+
   private List parse() throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, IOException {
+    preHandler();
+
     if (sheetCount == 1 || (this.sheetRead !=null && this.sheetRead.size() == 1)){
       return parse(1);
     }
     if (this.sheetRead!=null && this.sheetRead.size()>0){
       List<List> result = new ArrayList<>(this.sheetRead.size());
       for (Integer sheetNum: this.sheetRead){
-        result.add(parse(sheetNum-1));
+        setListValue(result, sheetNum-1, parse(sheetNum),Collections.emptyList(),  sheetCount);
       }
       return result;
     }
     if (sheetCount>1){
       List<List> result = new ArrayList<>(this.sheetCount);
-      for (int i = 0; i < this.sheetCount; i++){
+      for (int i = 1; i <= this.sheetCount; i++){
         result.add(parse(i));
       }
       return result;
@@ -256,45 +353,150 @@ public class ExcelReader {
 
   private<T> T readRow(Row row, Class<T> clazz, List<String> properties, Map<String, Method> methodMap) throws IllegalAccessException, InstantiationException, InvocationTargetException {
     T rowData = clazz.newInstance();
+    if (rowData instanceof List){
+      for (int i = 0; i < row.getLastCellNum(); i ++){
+        Object obj = getCellValue(row.getCell(i));
+        ((List)rowData).add(obj);
+      }
+      return rowData;
+    }
     for (int i = 0; i < properties.size(); i++){
-      if (properties.get(i) == null || "".equals(properties.get(i))) {
+      if (properties.get(i) == null || "".equals(properties.get(i))){
         continue;
       }
       Cell cell = row.getCell(i);
-      Object val;
-      switch (cell.getCellType()){
-        case STRING:
-          val = cell.getStringCellValue();
-          break;
-        case NUMERIC:
-          val = cell.getNumericCellValue();
-          break;
-        case BOOLEAN:
-          val = cell.getBooleanCellValue();
-          break;
-        case _NONE:
-        case BLANK:
-        case ERROR:
-          val = null;
-          break;
-        case FORMULA:
-          val = cell.getStringCellValue();
-          break;
-        default:
-          val = null;
-          break;
-      }
-      if (rowData instanceof List){
-        ((List) rowData).add(val);
-      } else if (rowData instanceof Map){
+      Object val = getCellValue(cell);
+      if (rowData instanceof Map){
         ((Map) rowData).put(properties.get(i), val);
       } else {
         Method method = methodMap.get(properties.get(i));
         Class paramType = method.getParameterTypes()[0];
-        method.invoke(rowData, paramType.cast(val));
+        method.invoke(rowData, paramType.cast(castToType(val, paramType)));
       }
     }
     return rowData;
+  }
+
+  private Object getCellValue(Cell cell){
+    switch (cell.getCellType()){
+      case STRING:
+        return cell.getStringCellValue();
+      case NUMERIC:
+        if (DateUtil.isCellDateFormatted(cell)){
+          return DateUtil.getJavaDate(cell.getNumericCellValue());
+        } else {
+          return cell.getNumericCellValue();
+        }
+      case BOOLEAN:
+        return cell.getBooleanCellValue();
+      case _NONE:
+      case BLANK:
+      case ERROR:
+        return null;
+      case FORMULA:
+        //CellType type = cell.getCachedFormulaResultType();
+        //val = cell.getRichStringCellValue().toString();
+        if (this.formulaEvaluator == null){
+          this.formulaEvaluator = isXlsx?new XSSFFormulaEvaluator((XSSFWorkbook) this.workbook):new HSSFFormulaEvaluator((HSSFWorkbook) this.workbook);
+        }
+        CellValue value = formulaEvaluator.evaluate(cell);
+        switch (value.getCellType()){
+          case STRING:
+            return value.getStringValue();
+          case NUMERIC:
+            return value.getNumberValue();
+          case BOOLEAN:
+            return value.getBooleanValue();
+          case BLANK:
+          case ERROR:
+          case _NONE:
+          default:
+            return null;
+        }
+      default:
+        return null;
+    }
+  }
+
+  private Date parseDate(String date){
+    Calendar.Builder builder = new Calendar.Builder();
+    Matcher matcher = datetimePattern.matcher(date);
+    if (matcher.matches()){
+      return builder
+          .setDate(Integer.valueOf(matcher.group("year")), Integer.valueOf( matcher.group("mon")),Integer.valueOf(matcher.group("day")))
+          .setTimeOfDay(Integer.valueOf(matcher.group("hour")), Integer.valueOf(matcher.group("min")), Integer.valueOf(matcher.group("sec")))
+          .build().getTime();
+    }
+    matcher = datePattern.matcher(date);
+    if (matcher.matches()){
+      return builder.setDate(Integer.valueOf(matcher.group("year")), Integer.valueOf( matcher.group("mon")),Integer.valueOf(matcher.group("day"))).build().getTime();
+    }
+    matcher = timePattern.matcher(date);
+    if (matcher.matches()){
+      return builder.setTimeOfDay(Integer.valueOf(matcher.group("hour")), Integer.valueOf(matcher.group("min")), Integer.valueOf(matcher.group("sec"))).build().getTime();
+    }
+    throw new ClassCastException(date + "cannot be cast to Date");
+  }
+
+  private Object castToType(Object obj,  Class type){
+    if (obj == null) return null;
+    if (obj instanceof String){
+      if (String.class.isAssignableFrom(type)){
+        return obj;
+      } else if (Integer.class.isAssignableFrom(type)){
+        return Integer.valueOf((String) obj);
+      } else if (Double.class.isAssignableFrom(type)) {
+        return Double.parseDouble((String) obj);
+      } else if (Boolean.class.isAssignableFrom(type)){
+        boolean t = "true".equalsIgnoreCase(((String) obj).trim())
+            || "1".equals(((String) obj).trim())
+            || "yes".equalsIgnoreCase(((String) obj).trim())
+            || "T".equalsIgnoreCase(((String) obj).trim());
+        if (t){return true;}
+        boolean f = "false".equalsIgnoreCase(((String) obj).trim())
+            || "0".equals(((String) obj).trim())
+            || "no".equalsIgnoreCase(((String) obj).trim())
+            || "F".equalsIgnoreCase(((String) obj).trim());
+        if (f){ return false;}
+        return null;
+      } else if (Date.class.isAssignableFrom(type)){
+        return parseDate((String) obj);
+      }
+    } else if (obj instanceof Double){
+      if (Double.class.isAssignableFrom(type)){
+        return obj;
+      }
+      if (String.class.isAssignableFrom(type)){
+        return obj.toString();
+      } else if (Integer.class.isAssignableFrom(type)){
+        return ((Double) obj).intValue();
+      } else if (Date.class.isAssignableFrom(type)){
+        return DateUtil.getJavaDate((Double) obj);
+      } else if (Boolean.class.isAssignableFrom(type)){
+        return !obj.equals(0);
+      }
+    } else if (obj instanceof Boolean){
+      if (String.class.isAssignableFrom(type)){
+        return (Boolean)obj?"true":"false";
+      } else if (Integer.class.isAssignableFrom(type)){
+        return (Boolean)obj?1:0;
+      } else if (Double.class.isAssignableFrom(type)){
+        return (Boolean)obj?1.0:0.0;
+      } else if (Date.class.isAssignableFrom(type)){
+        throw new ClassCastException("Cannot cast Boolean to Date");
+      }
+    } else if (obj instanceof Date){
+      if (String.class.isAssignableFrom(type)){
+        return String.format("%tc", obj);
+      } else if (Integer.class.isAssignableFrom(type)){
+        return (int)((Date)obj).getTime();
+      } else if (Double.class.isAssignableFrom(type)){
+        return (double)((Date)obj).getTime();
+      } else if (Date.class.isAssignableFrom(type)){
+        return obj;
+      }
+    }
+    return obj;
   }
 
   private void postHandler() throws IOException {
@@ -411,6 +613,12 @@ public class ExcelReader {
         return str;   //同一对象
       }
     }
+
   }
 
+  @Override
+  protected void finalize() throws Throwable {
+    postHandler();
+    super.finalize();
+  }
 }

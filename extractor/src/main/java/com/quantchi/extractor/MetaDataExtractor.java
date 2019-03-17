@@ -1,8 +1,8 @@
 package com.quantchi.extractor;
 
 import com.quantchi.extractor.entity.*;
-
 import org.jetbrains.annotations.Nullable;
+
 import java.sql.SQLException;
 import java.util.List;
 

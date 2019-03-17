@@ -3,9 +3,9 @@ package com.quantchi.common.excel;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFDataValidationHelper;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,6 +13,7 @@ import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -42,7 +43,7 @@ import java.util.stream.Stream;
  * @date 2010.1.04
  * @since 1.5.9
  */
-@SuppressWarnings({"all"})
+@SuppressWarnings("all")
 public class ExcelWriter {
 
   public enum BorderPosition{
@@ -82,8 +83,13 @@ public class ExcelWriter {
 
   private Stream<?> dataSteam;
 
+  private static final String datetimeFormat = "yyyy-MM-dd HH:mm:ss";
+  private SimpleDateFormat dateFormat = new SimpleDateFormat(datetimeFormat);
+  private DataFormat dataFormat;
+
   public ExcelWriter setSheetCount(int size){
     this.sheetCount = size;
+    this.workbook.getCreationHelper().createDataFormat();
     return this;
   }
 
@@ -94,9 +100,9 @@ public class ExcelWriter {
 
   /**
    * 设置每个sheet的数据类型，不设置时将根据传入的数据data自动推断
-   * @param clazz class
+   * @param clazz
    * @param sheetNum based from 1
-   * @return this
+   * @return
    */
   public ExcelWriter setDataType(int sheetNum, Class clazz){
     this.type = setList(this.type, sheetNum-1, clazz, null, sheetCount);
@@ -109,13 +115,13 @@ public class ExcelWriter {
   }
 
   public ExcelWriter setAutoWidth(int sheetNum, boolean autoWidth){
-    this.autoCellWidth = setList(this.autoCellWidth, sheetNum, autoWidth, false, sheetNum);
+    this.autoCellWidth = setList(this.autoCellWidth, sheetNum-1, autoWidth, false, sheetCount);
     return this;
   }
 
   public ExcelWriter setBodyCellStyle(){
     if (this.workbook==null){
-      this.workbook = new XSSFWorkbook();
+      this.workbook = new SXSSFWorkbook();
     }
     if (this.bodyStyle == null) {
       this.titleStyle = workbook.createCellStyle();
@@ -129,7 +135,7 @@ public class ExcelWriter {
     return this;
   }
 
-  public ExcelWriter setBodyCellStyleAlign(@Nullable HorizontalAlignment horizontalAlignment, @Nullable  VerticalAlignment verticalAlignment){
+  public ExcelWriter setBodyCellStyleAlign(@Nullable HorizontalAlignment horizontalAlignment, @Nullable VerticalAlignment verticalAlignment){
     setBodyCellStyle();
     this.bodyStyle = setCellStyleAlign(this.bodyStyle, horizontalAlignment, verticalAlignment);
     return this;
@@ -143,7 +149,7 @@ public class ExcelWriter {
 
   private ExcelWriter setTitleCellStyle(){
     if (this.workbook==null){
-      this.workbook = new XSSFWorkbook();
+      this.workbook = new SXSSFWorkbook();
     }
     if (this.titleStyle == null){
       this.titleStyle = workbook.createCellStyle();
@@ -222,20 +228,20 @@ public class ExcelWriter {
         case ALL:
           all = true;
         case TOP:
-          if (borderStyle!=null) {style.setBorderTop(borderStyle);}
-          if (color!=null)       {style.setTopBorderColor(color.shortValue()) ;}
+          if (borderStyle!=null) {style.setBorderTop(borderStyle);};
+          if (color!=null)       {style.setTopBorderColor(color.shortValue()) ;};
           if (!all) break;
         case BOTTOM:
           if (borderStyle!=null) {style.setBorderBottom(borderStyle);}
           if (color!=null)       {style.setBottomBorderColor(color.shortValue());}
           if (!all) break;
         case LEFT:
-          if (borderStyle!=null) {style.setBorderLeft(borderStyle);}
-          if (color!=null)       {style.setLeftBorderColor(color.shortValue());}
+          if (borderStyle!=null) {style.setBorderLeft(borderStyle);};
+          if (color!=null)       {style.setLeftBorderColor(color.shortValue());};
           if (!all) break;
         case RIGHT:
           if (borderStyle!=null) {style.setBorderRight(borderStyle);};
-          if (color!=null)       {style.setRightBorderColor(color.shortValue());}
+          if (color!=null)       {style.setRightBorderColor(color.shortValue());};
           if (!all) break;
       }
     }
@@ -252,13 +258,13 @@ public class ExcelWriter {
   }
   /**
    * 默认设置第一个sheet的style
-   * @param fontName font name
-   * @param fontSize font size
-   * @param startRow start row
-   * @param endRow   end row
-   * @param startCol start column
-   * @param endCol   end column
-   * @return this
+   * @param fontName
+   * @param fontSize
+   * @param startRow
+   * @param endRow
+   * @param startCol
+   * @param endCol
+   * @return
    */
   public ExcelWriter setCustomCellStyleFont(String fontName, Integer fontSize, Integer fontColor, int startRow, int endRow, int startCol, int endCol){
     setCustomCellStyleFont(1, fontName, fontSize, fontColor, startRow, endRow, startCol, endCol);
@@ -272,7 +278,7 @@ public class ExcelWriter {
     if ((styleMap = getList(this.customStyle, sheetNumBased1-1, new HashMap<>())).containsKey(addresses)){
       style = styleMap.get(addresses);
     } else {
-      if (this.workbook == null){ this.workbook = new XSSFWorkbook(); }
+      if (this.workbook == null){ this.workbook = new SXSSFWorkbook(); }
       style = this.workbook.createCellStyle();
     }
     setCellStyleFont(style, fontName, fontSize, fontColor);
@@ -288,7 +294,7 @@ public class ExcelWriter {
     if ((styleMap = getList(this.customStyle, sheetNum-1, new HashMap<>())).containsKey(addresses)){
       style = styleMap.get(addresses);
     } else {
-      if (this.workbook == null){ this.workbook = new XSSFWorkbook(); }
+      if (this.workbook == null){ this.workbook = new SXSSFWorkbook(); }
       style = this.workbook.createCellStyle();
     }
     setCellStyleColor(style, backgroundColor, foregroundColor);
@@ -357,11 +363,11 @@ public class ExcelWriter {
    * 设置单元格下拉选项
    * @param sheetNum   第几个sheet,based 1
    * @param columnNum  第几列 based 1
-   * @param constaint  可选项
-   * @return            this
+   * @param constaint
+   * @return
    */
   public ExcelWriter setCellConstraint(int sheetNum, int columnNum, List<String> constaint){
-    if (this.cellConstraint!=null && this.cellConstraint.size()>sheetNum){
+    if (this.cellConstraint!=null && this.cellConstraint.size()>=sheetNum){
       Map<Integer, List<String>> constainMap = this.cellConstraint.get(sheetNum-1);
       if (constainMap!=null){
         constainMap.put(columnNum, constaint);
@@ -403,6 +409,7 @@ public class ExcelWriter {
     return this;
   }
 
+  @SuppressWarnings("unchecked")
   private void preHandler() throws NoSuchMethodException {
     //检测是否存在数据，以数据或者标题的数量来判定sheet数量
     if (this.data==null || this.data.size()==0){
@@ -484,7 +491,7 @@ public class ExcelWriter {
     }
   }
 
-  public Workbook generate(final String sheetName,final List<?> titles, final List<String> sortedFields, final List<?> datas) throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
+  public Workbook generate(final String sheetName, final List<?> titles, final List<String> sortedFields, final List<?> datas) throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
     return generate(
             Collections.singletonList(sheetName),
             Collections.singletonList(titles),
@@ -499,14 +506,14 @@ public class ExcelWriter {
    * @param data
    * @return
    */
-  public Workbook generate(final List<String> sheetNames,final List<List<?>> titles,final List<List<String>> sortedFields,final List<List<?>> data) throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
+  public Workbook generate(final List<String> sheetNames, final List<List<?>> titles, final List<List<String>> sortedFields, final List<List<?>> data) throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
     this.sheetNames = sheetNames;
     this.titles = titles;
     this.sortedFields = sortedFields;
     this.data = data;
 
     if (this.workbook == null){
-      this.workbook = new XSSFWorkbook();
+      this.workbook = new SXSSFWorkbook();
     }
     preHandler();
 
@@ -553,9 +560,9 @@ public class ExcelWriter {
    * @param <T>
    * @throws NoSuchMethodException
    */
-  private<T> Workbook generate(final String sheetNames,final List<?> titles,final List<String> sortedFields, Stream<T> data) throws NoSuchMethodException {
+  private<T> Workbook generate(final String sheetNames, final List<?> titles, final List<String> sortedFields, Stream<T> data) throws NoSuchMethodException {
     if (this.workbook == null){
-      this.workbook = new XSSFWorkbook();
+      this.workbook = new SXSSFWorkbook();
     }
     preHandler();
     Sheet sheet;
@@ -569,7 +576,7 @@ public class ExcelWriter {
       titleRows = exportTitle(sheet, titles, true);
     }
     int[] dataRows = new int[1];
-    final Map<String, Method> methodMap = getList(this.beanGetMethods, 0, Collections.emptyMap());
+    final Map<String, Method> methodMap = getList(this.beanGetMethods, 0, Collections.EMPTY_MAP);
     data.map(i-> {
       try {
         return flatData(i,i.getClass(), sortedFields, methodMap);
@@ -589,13 +596,13 @@ public class ExcelWriter {
   }
 
   private void postHandler(int sheetIndex, Sheet sheet , int titleRows, int dataRows){
-    if (getList(this.autoCellWidth, sheetIndex, false)){
+    if (true == getList(this.autoCellWidth, sheetIndex, false)){
       Row row = sheet.getRow(sheet.getFirstRowNum());
       for (int i = 0; i < row.getLastCellNum(); i++){
         sheet.autoSizeColumn(i);
       }
     }
-    if (getList(this.cellConstraint, sheetIndex, Collections.emptyMap()).size()>0){
+    if (getList(this.cellConstraint, sheetIndex, Collections.EMPTY_MAP).size()>0){
       Map<Integer, List<String>> constraints = this.cellConstraint.get(sheetIndex);
       DataValidationHelper helper = new XSSFDataValidationHelper((XSSFSheet) sheet);
       for (Map.Entry<Integer, List<String>> entry: constraints.entrySet()){
@@ -614,7 +621,7 @@ public class ExcelWriter {
       }
     }
 
-    if (getList(this.customStyle, sheetIndex, Collections.emptyMap()).size()>0){
+    if (getList(this.customStyle, sheetIndex, Collections.EMPTY_MAP).size()>0){
       for (Map.Entry<CellRangeAddress, CellStyle> map: this.customStyle.get(sheetIndex).entrySet()){
         CellRangeAddress addresses = map.getKey();
         CellStyle style = map.getValue();
@@ -872,9 +879,6 @@ public class ExcelWriter {
   }
 
   private int setCell(Cell cell, Object data, CellStyle style){
-    if (style!=null){
-      cell.setCellStyle(style);
-    }
     if (data == null){
       return 0;
     } else if (data instanceof Number){
@@ -884,13 +888,24 @@ public class ExcelWriter {
     } else if (data instanceof Boolean){
       cell.setCellValue((boolean)data);
     } else if (data instanceof Date){
-      cell.setCellValue((Date)data);
+      //cell.setCellValue(dateFormat.format(data));
+      cell.setCellValue((Date) data);
+      if (dataFormat==null){
+        dataFormat = this.workbook.getCreationHelper().createDataFormat();
+      }
+      if (style == null){
+        style = this.workbook.createCellStyle();
+      }
+      style.setDataFormat(dataFormat.getFormat(datetimeFormat));
     } else if (data instanceof Calendar){
-      cell.setCellValue((Calendar)data);
+      cell.setCellValue(((Calendar)data));
     } else if (data instanceof Serializable){
       cell.setCellValue(data.toString());
     } else {
       return 0;
+    }
+    if (style!=null){
+      cell.setCellStyle(style);
     }
     return 1;
   }
