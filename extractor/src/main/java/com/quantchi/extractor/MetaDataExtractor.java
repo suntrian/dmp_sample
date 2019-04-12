@@ -82,4 +82,7 @@ public interface MetaDataExtractor {
                                              @Nullable String schema,
                                              String table) throws SQLException;
 
+  String getVersion() throws SQLException;
+
+  String getTableDDL(String catalog, String schema, String table) throws SQLException;
 }

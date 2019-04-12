@@ -9,4 +9,8 @@ dependencies {
     //runtimeOnly 'com.github.noraui:ojdbc8:12.2.0.1'
     //runtimeOnly 'com.oracle:ojdbc14:10.2.0.4.0'
     implementation fileTree(dir: 'lib', includes: ['*.jar'] )
+
+    implementation "org.apache.logging.log4j:log4j-api:$log4j2_version"
+    implementation "org.apache.logging.log4j:log4j-core:$log4j2_version"
+    implementation "org.apache.logging.log4j:log4j-slf4j-impl:$log4j2_version"
 }

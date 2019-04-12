@@ -18,7 +18,7 @@ public class ModelDiffElement<T extends Serializable> implements Serializable {
   private ModelDiffWrapper.State state;
   private T original;
   private T current;
-  //parent 和 children 和当前节点一般非同一类型
+  //parentId 和 children 和当前节点一般非同一类型
   private ModelDiffElement<Serializable> parent;
   private List<ModelDiffElement<Serializable>> children = new LinkedList<>();
 

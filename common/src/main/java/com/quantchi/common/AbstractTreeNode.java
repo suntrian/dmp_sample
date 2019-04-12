@@ -9,9 +9,9 @@ public abstract class AbstractTreeNode<T extends AbstractTreeNode, ID extends Se
 
     private static final long serialVersionUID = -980028682514888277L;
 
-    private static transient String split = "_";
+    private static transient String split = "/";
 
-    protected ID parent;          // parent id
+    protected ID parentId;          // parentId id
     protected ID id;              // self id
     protected String path;
     protected Integer depth;        //树层级
@@ -35,12 +35,12 @@ public abstract class AbstractTreeNode<T extends AbstractTreeNode, ID extends Se
         this.id = id;
     }
 
-    public ID getParent() {
-        return (this.parent==null&&this.parentNode==null)?null:(this.parent!=null?this.parent:(ID) this.parentNode.getId());
+    public ID getParentId() {
+        return (this.parentId ==null&&this.parentNode==null)?null:(this.parentId !=null?this.parentId :(ID) this.parentNode.getId());
     }
 
-    public void setParent(ID parent) {
-        this.parent = parent;
+    public void setParentId(ID parentId) {
+        this.parentId = parentId;
     }
 
     public T getParentNode() {
@@ -68,7 +68,7 @@ public abstract class AbstractTreeNode<T extends AbstractTreeNode, ID extends Se
     }
 
     public boolean isRoot(){
-        return this.parent == null;
+        return this.parentId == null;
     }
 
     public boolean isLeaf(){
@@ -136,20 +136,20 @@ public abstract class AbstractTreeNode<T extends AbstractTreeNode, ID extends Se
             Iterator<T> iterator = treeNodes.iterator();
             while (iterator.hasNext()){
                 T node = iterator.next();
-                if (!node.filter() || filteredIdSet.contains(node.parent) ){
+                if (!node.filter() || filteredIdSet.contains(node.parentId) ){
                     filteredIdSet.add((ID) node.id);
                     nodeIdSet.remove(node.id);
                     iterator.remove();
                     continue;
                 }
-                if (node.isRoot() || !nodeIdSet.contains((ID)node.parent)){
+                if (node.isRoot() || !nodeIdSet.contains((ID)node.parentId)){
                     //根节点
-                    node.setParent(null);
+                    node.setParentId(null);
                     roots.add(insertPos(roots, node), node);
                     visited.put((ID)node.id, node);
                     iterator.remove();
-                } else if (visited.keySet().contains((ID)node.parent)){
-                    visited.get((ID)node.parent).addChild(node);
+                } else if (visited.keySet().contains((ID)node.parentId)){
+                    visited.get((ID)node.parentId).addChild(node);
                     visited.put((ID)node.id, node);
                     iterator.remove();
                 }

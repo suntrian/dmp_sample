@@ -2,8 +2,8 @@ package com.quantchi.extractor;
 
 import com.quantchi.extractor.datasource.DatasourceResolver;
 import com.quantchi.extractor.datasource.DriverType;
+import com.quantchi.extractor.dialect.*;
 import com.quantchi.extractor.entity.*;
-import com.quantchi.extractor.executor.*;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
@@ -135,6 +135,16 @@ public class JDBCExtractor implements MetaDataExtractor, SqlExtractor {
     @Override
     public List<Map<String, Object>> explain( String sql) throws SQLException {
         return this.extractor.explain(this.connection, sql);
+    }
+
+    @Override
+    public String getVersion() throws SQLException {
+        return this.extractor.getVersion(this.connection);
+    }
+
+    @Override
+    public String getTableDDL(String catalog, String schema, String table) throws SQLException {
+        return this.extractor.extractDDL(this.connection, JdbcMetaDataExtractor.DDLType.TABLE.name(), catalog, schema, table);
     }
 
     public void close(){

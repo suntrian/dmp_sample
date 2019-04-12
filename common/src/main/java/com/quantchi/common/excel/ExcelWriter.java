@@ -6,6 +6,7 @@ import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFDataValidationHelper;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -87,6 +88,10 @@ public class ExcelWriter {
   private SimpleDateFormat dateFormat = new SimpleDateFormat(datetimeFormat);
   private DataFormat dataFormat;
 
+  private Workbook newWorkbook(){
+    return new XSSFWorkbook();  //new SXSSFWorkbook(); // 无法读，导致无法在postHandler里面设置单元格属性
+  }
+
   public ExcelWriter setSheetCount(int size){
     this.sheetCount = size;
     this.workbook.getCreationHelper().createDataFormat();
@@ -121,7 +126,7 @@ public class ExcelWriter {
 
   public ExcelWriter setBodyCellStyle(){
     if (this.workbook==null){
-      this.workbook = new SXSSFWorkbook();
+      this.workbook = newWorkbook();
     }
     if (this.bodyStyle == null) {
       this.titleStyle = workbook.createCellStyle();
@@ -135,7 +140,7 @@ public class ExcelWriter {
     return this;
   }
 
-  public ExcelWriter setBodyCellStyleAlign(@Nullable HorizontalAlignment horizontalAlignment, @Nullable VerticalAlignment verticalAlignment){
+  public ExcelWriter setBodyCellStyleAlign(@Nullable HorizontalAlignment horizontalAlignment, @Nullable  VerticalAlignment verticalAlignment){
     setBodyCellStyle();
     this.bodyStyle = setCellStyleAlign(this.bodyStyle, horizontalAlignment, verticalAlignment);
     return this;
@@ -149,7 +154,7 @@ public class ExcelWriter {
 
   private ExcelWriter setTitleCellStyle(){
     if (this.workbook==null){
-      this.workbook = new SXSSFWorkbook();
+      this.workbook = newWorkbook();
     }
     if (this.titleStyle == null){
       this.titleStyle = workbook.createCellStyle();
@@ -278,7 +283,7 @@ public class ExcelWriter {
     if ((styleMap = getList(this.customStyle, sheetNumBased1-1, new HashMap<>())).containsKey(addresses)){
       style = styleMap.get(addresses);
     } else {
-      if (this.workbook == null){ this.workbook = new SXSSFWorkbook(); }
+      if (this.workbook == null){ this.workbook = newWorkbook(); }
       style = this.workbook.createCellStyle();
     }
     setCellStyleFont(style, fontName, fontSize, fontColor);
@@ -294,7 +299,7 @@ public class ExcelWriter {
     if ((styleMap = getList(this.customStyle, sheetNum-1, new HashMap<>())).containsKey(addresses)){
       style = styleMap.get(addresses);
     } else {
-      if (this.workbook == null){ this.workbook = new SXSSFWorkbook(); }
+      if (this.workbook == null){ this.workbook = newWorkbook(); }
       style = this.workbook.createCellStyle();
     }
     setCellStyleColor(style, backgroundColor, foregroundColor);
@@ -513,7 +518,7 @@ public class ExcelWriter {
     this.data = data;
 
     if (this.workbook == null){
-      this.workbook = new SXSSFWorkbook();
+      this.workbook = newWorkbook();  //new SXSSFWorkbook(); // 无法读，导致无法在postHandler里面设置单元格属性
     }
     preHandler();
 
@@ -562,7 +567,7 @@ public class ExcelWriter {
    */
   private<T> Workbook generate(final String sheetNames, final List<?> titles, final List<String> sortedFields, Stream<T> data) throws NoSuchMethodException {
     if (this.workbook == null){
-      this.workbook = new SXSSFWorkbook();
+      this.workbook = newWorkbook();
     }
     preHandler();
     Sheet sheet;
@@ -599,7 +604,11 @@ public class ExcelWriter {
     if (true == getList(this.autoCellWidth, sheetIndex, false)){
       Row row = sheet.getRow(sheet.getFirstRowNum());
       for (int i = 0; i < row.getLastCellNum(); i++){
-        sheet.autoSizeColumn(i);
+        try {
+          sheet.autoSizeColumn(i);
+        } catch (Exception e) {
+
+        }
       }
     }
     if (getList(this.cellConstraint, sheetIndex, Collections.EMPTY_MAP).size()>0){
@@ -881,6 +890,8 @@ public class ExcelWriter {
   private int setCell(Cell cell, Object data, CellStyle style){
     if (data == null){
       return 0;
+    } else if (data instanceof Long) {
+      cell.setCellValue(((Long) data).toString());
     } else if (data instanceof Number){
       cell.setCellValue(((Number)data).doubleValue());
     } else if (data instanceof String){

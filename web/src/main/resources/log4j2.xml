@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="error" name="DMP" packages="">
+  <Properties>
+    <Property name="logDir">logs</Property>
+    <Property name="appName">dmp</Property>
+    <Property name="layout1">[%d{yyyy-MM-dd HH:mm:ss}][%-5p][%t][%c{1}:%L]-%m%n</Property>
+    <Property name="layout2">[%d{yyyy-MM-dd HH:mm:ss}][%-5p][%t][%-5level] %logger{36} - %msg%n</Property>
+    <Property name="extractLayout">[%d{yyyy-MM-dd HH:mm:ss}][%-5level]-> %msg%n</Property>
+  </Properties>
+
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="${layout1}" />
+    </Console>
+
+    <RollingFile name="File" fileName="${logDir}/api.log"
+                 filePattern="${logDir}/${appName}_%d{yyyy-MM-dd}.%i.log.zip">
+      <PatternLayout>
+        <Pattern>${layout2}</Pattern>
+      </PatternLayout>
+      <Policies>
+        <TimeBasedTriggeringPolicy />
+        <SizeBasedTriggeringPolicy size="100MB"/>
+      </Policies>
+      <DefaultRolloverStrategy max="20"/>
+    </RollingFile>
+
+    <RollingFile name="Error" fileName="${logDir}/error.log"
+                 filePattern="${logDir}/${appName}_ERROR_%i.log.zip">
+      <PatternLayout pattern="${layout2}" />
+      <Policies>
+        <SizeBasedTriggeringPolicy size="100MB"/>
+      </Policies>
+      <DefaultRolloverStrategy max="20" />
+    </RollingFile>
+
+    <!--    <JDBC name="Jdbc" tableName="LOGGING.APPLICATION_LOG">
+          &lt;!&ndash; 数据库连接&ndash;&gt;
+          &lt;!&ndash;<ConnectionFactory class="net.example.db.ConnectionFactory" method="getDatabaseConnection" /> &ndash;&gt;
+          <Column name="EVENT_ID" literal="LOGGING.APPLICATION_LOG_SEQUENCE.NEXTVAL" />
+          &lt;!&ndash; name：字段；literal：值；pattern：使用log4j内置变量；isEventTimestamp：时间戳&ndash;&gt;
+          <Column name="EVENT_DATE" isEventTimestamp="true" />
+          <Column name="LEVEL" pattern="%level" />
+          <Column name="LOGGER" pattern="%logger" />
+          <Column name="MESSAGE" pattern="%message" />
+          <Column name="THROWABLE" pattern="%ex{full}" />
+        </JDBC>-->
+
+    <Async name="Async">
+      <AppenderRef ref="Error"/>
+    </Async>
+  </Appenders>
+  <Loggers>
+
+    <Logger name="com.quantchi" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console" />
+      <AppenderRef ref="File" />
+    </Logger>
+
+    <Logger name="com.quantchi.extractor" level="INFO" additivity="true">
+      <AppenderRef ref="Async"/>
+    </Logger>
+
+    <AsyncLogger name="com.quantchi.dataextract.job" level="INFO" additivity="true">
+      <!--<AppenderRef ref="Jdbc" />-->
+    </AsyncLogger>
+
+    <Root level="ERROR">
+      <AppenderRef ref="Error"/>
+    </Root>
+  </Loggers>
+</Configuration>

@@ -387,9 +387,11 @@ public class ModelDiffVisitHelper {
       case REMAIN:
         //只处理新的数据，即第二个数据
         this.remainElementFunction.put(level, (Serializable a, Serializable b)-> handler.apply((T) b) );
+        break;
       case UPDATED:
         //只处理新的数据，即第二个数据
         this.updatedElementFunction.put(level, (Serializable a, Serializable b)-> handler.apply((T) b));
+        break;
         default:
     }
   }
@@ -439,6 +441,7 @@ public class ModelDiffVisitHelper {
         break;
       case DELETED:
         this.deletedReduce.put(level, (BiFunction<Object, Object, Object>) reduce);
+        break;
         default:
     }
   }

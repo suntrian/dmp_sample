@@ -3,4 +3,5 @@ version
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-quartz:+'
+    runtimeOnly 'org.apache.derby:derby:10.14.2.0'
 }

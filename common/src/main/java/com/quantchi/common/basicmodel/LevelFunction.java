@@ -12,11 +12,9 @@ import java.util.function.Function;
 public class LevelFunction<T, PK extends Comparable> implements Serializable {
   public interface SerializableFunction<T, R> extends Function<T, R>, Serializable{}
   private static final long serialVersionUID = -2565599590654233367L;
-  @Getter
-  @Setter
+  @Getter @Setter
   SerializableFunction<T, PK> keyGetter;
-  @Getter
-  @Setter
+  @Getter @Setter
   SerializableFunction<T, PK> parentGetter;
   @Getter
   SerializableFunction<T, ? extends Serializable>[] propertyGetter;

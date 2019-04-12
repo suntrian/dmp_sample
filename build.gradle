@@ -38,12 +38,12 @@ subprojects {
         implementation 'joda-time:joda-time:2.10.1'
         compileOnly 'org.projectlombok:lombok:1.18.4'
         testImplementation 'junit:junit:4.13-beta-2'
-        
+        implementation 'org.slf4j:slf4j-api:1.8.0-beta4'
     }
 
 
 }
 
 ext {
-    log4j2_version= '2.11.1'
+    log4j2_version= '2.11.2'
 }
