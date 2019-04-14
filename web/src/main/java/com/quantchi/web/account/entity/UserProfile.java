@@ -5,5 +5,10 @@ import lombok.Data;
 import java.io.Serializable;
 
 @Data
-public class UserProfile implements Serializable {
+public class UserProfile extends UserAccount implements Serializable {
+
+    private String avatar;
+    private Boolean gender;
+    private String address;
+
 }

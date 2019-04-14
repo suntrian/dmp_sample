@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.quantchi.web.metadata.dao.MdColumnMapper">
+
+    <resultMap id="BaseResultMap" type="com.quantchi.web.metadata.entity.MdColumn" autoMapping="true">
+        <id column="id" property="id" jdbcType="VARCHAR"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="label" property="label" jdbcType="VARCHAR"/>
+        <result column="alias" property="alias" jdbcType="VARCHAR"/>
+        <result column="type" property="type" jdbcType="VARCHAR"/>
+        <result column="default_value" property="defaultValue" jdbcType="VARCHAR"/>
+        <result column="extra" property="extra" jdbcType="VARCHAR"/>
+        <result column="remark" property="remark" jdbcType="VARCHAR"/>
+        <result column="table_id" property="tableId" jdbcType="VARCHAR"/>
+        <result column="database_id" property="databaseId" jdbcType="VARCHAR"/>
+        <result column="datasource_id" property="datasourceId" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="BaseColumn">
+        id,
+        name,
+        label,
+        alias,
+        type,
+        length,
+        `rank`,
+        `default_value`,
+        extra,
+        remark,
+        table_id,
+        database_id,
+        datasource_id
+    </sql>
+    <sql id="BaseProperty">
+        #{${pre}id}, #{${pre}name}, #{${pre}label}, #{${pre}alias}, #{${pre}type}, #{${pre}length}, #{${pre}rank}, #{${pre}defaultValue}, #{${pre}extra}, #{${pre}remark}, #{${pre}tableId}, #{${pre}databaseId}, #{${pre}datasourceId}
+    </sql>
+    <insert id="insert">
+        INSERT INTO md_column(<include refid="BaseColumn"/>) VALUES (
+        <include refid="BaseProperty">
+            <property name="pre" value=""/>
+        </include>
+        )
+    </insert>
+    <insert id="insertBatch">
+        INSERT IGNORE INTO md_column (<include refid="BaseColumn"/>) VALUES
+        <foreach collection="collection" item="col" separator=",">(
+            <include refid="BaseProperty">
+                <property name="pre" value="col."/>
+            </include>
+            )
+        </foreach>
+    </insert>
+    <update id="update">
+        UPDATE md_column
+        <set>
+            <if test="label!=null">label = #{label},</if>
+            <if test="alias != null">alias = #{alias},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="length != null">length = #{length},</if>
+            <if test="rank != null">rank = #{rank},</if>
+            <if test="defaultValue != null">default_value = #{defaultValue},</if>
+            <if test="extra != null">extra = #{extra},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+    <delete id="delete">
+        DELETE
+        FROM md_column
+        WHERE id = #{id}
+    </delete>
+    <delete id="deleteBatch">
+        DELETE FROM md_column WHERE id IN
+        <foreach collection="collection" separator="," open="(" close=")" item="id">#{id}</foreach>
+    </delete>
+    <select id="list" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM md_column
+        <where>
+            <if test="label!=null">AND label = #{label}</if>
+            <if test="alias != null">AND alias = #{alias}</if>
+            <if test="type != null">AND type = #{type}</if>
+            <if test="length != null">AND length = #{length}</if>
+            <if test="rank != null">AND rank = #{rank}</if>
+            <if test="defaultValue != null">AND default_value = #{defaultValue}</if>
+            <if test="extra != null">AND extra = #{extra}</if>
+            <if test="tableId != null">AND table_id = #{tableId}</if>
+            <if test="databaseId != null">AND database_id = #{databaseId}</if>
+            <if test="datasourceId != null">AND datasource_id = #{datasourceId}</if>
+        </where>
+    </select>
+</mapper>

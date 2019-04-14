@@ -7,15 +7,16 @@ import java.io.Serializable;
 @Data
 public class MdTable implements Serializable {
 
-    private Integer id;
+    private String id;
     private String name;
     private String label;
-    private Integer databaseId;
-    private Integer datasourceId;
+    private String databaseId;
+    private String datasourceId;
     private String schema;
-    private String coordinate;
     private String type;
     private String remark;
     private String ddl;
+    private String primaryKey;
+    private Integer rank;
 
 }

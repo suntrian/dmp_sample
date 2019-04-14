@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.quantchi.web.account.dao.UserLoginRecordDao">
+
+    <sql id="BaseColumn">
+        login_time,
+        user_id,
+        login_ip,
+        status
+    </sql>
+
+    <insert id="insert">
+        INSERT INTO user_login_record(<include refid="BaseColumn"/>) VALUE (#{loginTime}, #{userId}, #{loginIp},
+        #{status})
+    </insert>
+    <delete id="deleteByUserId">
+        DELETE
+        FROM user_login_record
+        WHERE user_id = #{userId}
+    </delete>
+    <delete id="deleteByUserIdAndDay">
+        DELETE FROM user_login_record WHERE user_id = #{userId}
+        <if test="fromDate!=null"><![CDATA[ AND login_time > #{fromDate} ]]></if>
+        <if test="endDate!=null"><![CDATA[ AND login_time < #{endDate} ]]></if>
+    </delete>
+    <select id="listByUserId" resultType="com.quantchi.web.account.entity.UserLoginRecord">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM user_login_record WHERE user_id = #{userId}
+    </select>
+    <select id="listByUserIdAndDay" resultType="com.quantchi.web.account.entity.UserLoginRecord">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM user_login_record WHERE user_id = #{userId}
+        <if test="fromDate!=null"><![CDATA[ AND login_time > #{fromDate} ]]></if>
+        <if test="endDate!=null"><![CDATA[ AND login_time < #{endDate} ]]></if>
+    </select>
+    <select id="getLastLogin" resultType="com.quantchi.web.account.entity.UserLoginRecord">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM user_login_record WHERE user_id = #{userId} AND login_time = (SELECT MAX(login_time) FROM user_login_record
+        WHERE user_id = #{userId})
+    </select>
+
+
+</mapper>

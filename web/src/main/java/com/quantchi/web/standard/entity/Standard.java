@@ -1,6 +1,6 @@
 package com.quantchi.web.standard.entity;
 
-import com.quantchi.web.common.constant.StatusConstant;
+import com.quantchi.web.common.constant.ConstantStatus;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -8,9 +8,9 @@ import java.io.Serializable;
 @Data
 public class Standard implements Serializable {
 
-    public static final int STATUS_NORMAL = StatusConstant.NORMAL.getStatus();
-    public static final int STATUS_UPGRADE = StatusConstant.UNREADY.getStatus();
-    public static final int STATUS_DELETED = StatusConstant.DELETED.getStatus();
+    public static final int STATUS_NORMAL = ConstantStatus.NORMAL.getStatus();
+    public static final int STATUS_UPGRADE = ConstantStatus.UNREADY.getStatus();
+    public static final int STATUS_DELETED = ConstantStatus.DELETED.getStatus();
 
     private Integer id;
     private String name;

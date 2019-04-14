@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="error" name="DMP" packages="">
+
+<!--日志级别以及优先级排序: OFF > FATAL > ERROR > WARN > INFO > DEBUG > TRACE > ALL -->
+<!--Configuration后面的status，这个用于设置log4j2自身内部的信息输出，可以不设置-->
+<!--monitorInterval：Log4j能够自动检测修改配置 文件和重新配置本身，设置间隔秒数-->
+<Configuration status="error" name="DMP" packages="" monitorInterval="3600">
   <Properties>
     <Property name="logDir">logs</Property>
     <Property name="appName">dmp</Property>
@@ -65,7 +69,15 @@
       <!--<AppenderRef ref="Jdbc" />-->
     </AsyncLogger>
 
-    <Root level="ERROR">
+      <logger name="org.springframework" level="INFO">
+          <AppenderRef ref="Console"/>
+      </logger>
+
+      <logger name="org.mybatis" level="INFO">
+          <AppenderRef ref="Console"/>
+      </logger>
+
+      <Root level="ERROR">
       <AppenderRef ref="Error"/>
     </Root>
   </Loggers>

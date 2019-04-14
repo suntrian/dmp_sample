@@ -5,6 +5,7 @@ import com.quantchi.web.account.entity.UserAccount;
 import java.util.List;
 
 public interface UserService {
+
     int addUser(UserAccount account);
 
     int modifyUser(UserAccount account);
@@ -13,7 +14,7 @@ public interface UserService {
 
     UserAccount get(Integer id);
 
-    List<UserAccount> list(UserAccount account);
+    List<UserAccount> list();
 
-    List<UserAccount> queryByUsername(String userName);
+    List<UserAccount> search(UserAccount account);
 }

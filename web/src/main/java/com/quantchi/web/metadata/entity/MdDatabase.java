@@ -7,11 +7,11 @@ import java.io.Serializable;
 @Data
 public class MdDatabase implements Serializable {
 
-    private Integer id;
+    private String id;
     private String name;
     private String label;
-    private Integer datasourceId;
-    private Integer systemId;
+    private String datasourceId;
+    private String systemId;
     private String remark;
 
 

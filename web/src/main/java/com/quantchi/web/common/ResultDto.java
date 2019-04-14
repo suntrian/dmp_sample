@@ -5,32 +5,27 @@ import org.springframework.http.HttpStatus;
 
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 @Data
 public class ResultDto implements Serializable {
 
-    private Integer code;
+    private Integer code = HttpStatus.OK.value();
     private String message;
     private Long total;
-    private Collection<?> data;
+    private Object data;
 
     public ResultDto(Integer code, String message) {
         this.code = code;
         this.message = message;
     }
 
-    public ResultDto(Integer code, Collection<?> data) {
-        this.code = code;
+    public ResultDto(Object data) {
         this.data = data;
-        this.total = (long)this.data.size();
     }
 
-    public ResultDto(Integer code, Collection<?> data, Long total) {
-        this.code = code;
-        this.total = total;
+    public ResultDto(Object data, Number total) {
         this.data = data;
+        this.total = total == null ? null : total.longValue();
     }
 
     public static ResultDto success(String message){
@@ -38,15 +33,15 @@ public class ResultDto implements Serializable {
     }
 
     public static <T> ResultDto success(T data){
-        return new ResultDto(HttpStatus.OK.value(), Collections.singleton(data), 1L);
+        return new ResultDto(data);
     }
 
     public static <T extends Collection> ResultDto success(T data){
-        return new ResultDto(HttpStatus.OK.value(), data);
+        return new ResultDto(data);
     }
 
     public static <T extends Collection> ResultDto success(T data, Number total){
-        return new ResultDto(HttpStatus.OK.value(), data, total.longValue());
+        return new ResultDto(data, total);
     }
 
     public static ResultDto failure(Integer code, String message){

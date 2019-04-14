@@ -1,30 +1,32 @@
 package com.quantchi.web.metadata.entity;
 
 import lombok.Data;
+
 import java.io.Serializable;
 
 @Data
 public class MdColumn implements Serializable {
 
-    private Integer id;
+    private String id;
     //字段名称
     private String name;
     //字段中文名
     private String label;
     //字段别名，多个别名用逗号分隔
     private String alias;
-    //字段坐标
-    private String coordinate;
-    private Integer tableId;
-    private Integer databaseId;
-    private Integer datasourceId;
-    //字段在表中的位置
-    private Integer order;
     private String type;
-    private Integer size;
+    private String tableId;
+    private String databaseId;
+    private String datasourceId;
+    //字段在表中的位置
+    private Integer rank;
+
     private String defaultValue;
-    // 1 is nonnull, 2 is autoincrement, 3 is unique, 4 primary key, 5 is foreign key, 6 is generated, 7 is partition key
-    private String extra = "0000000";
+    private Integer length;
+
+    // 1 is nonnull, 2 is autoincrement, 3 is unique, 4 primary key (0 for not, >1 for pk order), 5 has index(0 for
+    // not, >1 for index order) ,  6 is foreign key, 7 is generated, 8 is partition key
+    private String extra = "00000000";
     private String remark;
 
     public boolean isNonnull(){
@@ -43,16 +45,20 @@ public class MdColumn implements Serializable {
         return this.extra.charAt(3);
     }
 
-    public boolean isForeignKey(){
-        return this.extra.charAt(4) == '1';
+    public int isIndex() {
+        return this.extra.charAt(4);
     }
 
-    public boolean isGenerated(){
+    public boolean isForeignKey(){
         return this.extra.charAt(5) == '1';
     }
 
-    public int isPartitionKey(){
-        return this.extra.charAt(6);
+    public boolean isGenerated() {
+        return this.extra.charAt(6) == '1';
+    }
+
+    public void setGenerated(boolean isGenerated) {
+        this.extra = replace(this.extra, 6, isGenerated ? '1' : '0');
     }
 
     public void setNonNull(boolean nonnull){
@@ -71,16 +77,20 @@ public class MdColumn implements Serializable {
         this.extra = replace(this.extra, 3, (char) primaryKeyIndex);
     }
 
-    public void setForeignKey(boolean foreignKey){
-        this.extra = replace(this.extra, 4, foreignKey?'1':'0');
+    public int isPartitionKey() {
+        return this.extra.charAt(7);
     }
 
-    public void setGenerated(boolean isGenerated){
-        this.extra = replace(this.extra, 5, isGenerated?'1':'0');
+    public void setIndex(int indexIndex) {
+        this.extra = replace(this.extra, 4, (char) indexIndex);
+    }
+
+    public void setForeignKey(boolean foreignKey){
+        this.extra = replace(this.extra, 5, foreignKey ? '1' : '0');
     }
 
     public void setPartitionKey(int partitionKey){
-        this.extra = replace(this.extra, 6, (char) partitionKey);
+        this.extra = replace(this.extra, 7, (char) partitionKey);
     }
 
     private String replace(String str, int pos, char c){

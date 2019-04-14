@@ -22,7 +22,6 @@ configurations {
     }
 }
 
-
 dependencies {
     implementation project(':scheduler')
     implementation project(':common')
@@ -37,11 +36,14 @@ dependencies {
     testImplementation('org.springframework.boot:spring-boot-starter-test')
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+    implementation 'com.lmax:disruptor:3.4.2'
+
 
     implementation 'com.github.pagehelper:pagehelper-spring-boot-starter:1.2.10'
 
     implementation 'org.apache.shiro:shiro-spring:1.4.0'
     compile 'io.jsonwebtoken:jjwt-api:0.10.6'
-    runtime 'io.jsonwebtoken:jjwt-impl:0.10.6'
-    runtimeOnly 'org.postgresql:postgresql:42.2.5.jre7'
+    runtime 'io.jsonwebtoken:jjwt-dao:0.10.6'
+    runtimeOnly 'mysql:mysql-connector-java:8.0.15'
+    // runtimeOnly 'org.postgresql:postgresql:42.2.5.jre7'
 }

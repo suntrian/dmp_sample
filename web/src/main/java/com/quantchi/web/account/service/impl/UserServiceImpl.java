@@ -36,12 +36,12 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<UserAccount> list(UserAccount account){
-        return userAccountDao.search(account);
+    public List<UserAccount> list() {
+        return userAccountDao.list();
     }
 
     @Override
-    public List<UserAccount> queryByUsername(String userName){
-        return userAccountDao.list(new UserAccount(userName));
+    public List<UserAccount> search(UserAccount account) {
+        return userAccountDao.search(account);
     }
 }

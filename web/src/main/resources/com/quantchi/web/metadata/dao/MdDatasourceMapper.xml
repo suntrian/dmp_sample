@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.quantchi.web.metadata.dao.MdDatasourceMapper">
+
+    <sql id="BaseProperty">
+        #{${pre}id}, #{${pre}name}, #{${pre}label}, #{${pre}type}, #{${pre}source}, #{${pre}status}, #{${pre}host}, #{${pre}port}, #{${pre}user}, #{${pre}pass}, #{${pre}version}, #{${pre}description}, #{${pre}systemId}, #{${pre}createdBy}, #{${pre}createdAt}, #{${pre}updatedBy}, #{${pre}updatedAt}
+    </sql>
+
+    <sql id="BaseColumn">
+        id,
+        name,
+        label,
+        type,
+        source,
+        status,
+        host,
+        port,
+        user,
+        pass,
+        version,
+        description,
+        system_id,
+        created_by,
+        created_at,
+        updated_by,
+        updated_at
+    </sql>
+
+    <insert id="insert">
+        INSERT INTO md_datasource (<include refid="BaseColumn"/>) VALUES (
+        <include refid="BaseProperty">
+            <property name="pre" value=""/>
+        </include>
+        )
+    </insert>
+    <update id="update">
+        UPDATE md_datasource
+        <set>
+            <if test="label != null">label = #{label},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="host != null">host = #{host},</if>
+            <if test="port != null">port = #{port},</if>
+            <if test="user != null">user = #{user},</if>
+            <if test="pass != null">pass = #{pass},</if>
+            <if test="version != null">version = #{version},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="updatedBy != null">updated_by = #{updatedBy},</if>
+            <if test="updateAt != null">updated_at = #{updatedAt},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+    <delete id="delete">
+        DELETE
+        FROM md_datasource
+        WHERE id = #{id}
+    </delete>
+    <select id="list" resultType="com.quantchi.web.metadata.entity.MdDatasource">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM md_datasource
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="label != null">AND label = #{label}</if>
+            <if test="status != null">AND status = #{status}</if>
+            <if test="version != null">AND version = #{version}</if>
+            <if test="updatedBy != null">AND updated_by = #{updatedBy}</if>
+            <if test="updateAt != null">AND updated_at = #{updatedAt}</if>
+            <if test="systemId!= null">AND system_id = #{systemId}</if>
+        </where>
+    </select>
+</mapper>

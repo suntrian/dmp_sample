@@ -8,4 +8,4 @@
  */
 
 rootProject.name = 'dmp'
-include 'extractor', 'web','webflux','sqlparser','scheduler','common'
+include 'extractor', 'web','webflux','sqlparser','scheduler','common', 'elasticsearch', 'install'

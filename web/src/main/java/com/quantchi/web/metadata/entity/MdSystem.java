@@ -7,9 +7,9 @@ import java.io.Serializable;
 @Data
 public class MdSystem implements Serializable {
 
-    private Integer id;
+    private String id;
     private String name;
-    private String description;
-
+    private String remark;
+    private Integer catalogId;
 
 }

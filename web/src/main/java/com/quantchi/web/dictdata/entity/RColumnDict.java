@@ -9,6 +9,6 @@ import java.io.Serializable;
 public class RColumnDict implements Serializable {
 
     private MdColumn column;
-    private MdDictItem dictItem;
+    private DictItem dictItem;
 
 }

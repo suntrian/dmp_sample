@@ -5,9 +5,8 @@ import com.quantchi.web.account.service.UserService;
 import com.quantchi.web.common.MessageHolder;
 import com.quantchi.web.common.ResultDto;
 import org.apache.shiro.authz.annotation.RequiresGuest;
-import org.apache.shiro.authz.annotation.RequiresPermissions;
-import org.apache.shiro.authz.annotation.RequiresUser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -53,7 +52,7 @@ public class AccountController {
     @PostMapping(value = "/logout")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void logout(){
-
+        new ClassPathResource("classpath:ddd");
     }
 
 }

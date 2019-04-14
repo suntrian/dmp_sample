@@ -4,7 +4,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@MapperScan({"com.quantchi.web.*.mapper","com.quantchi.web.*.dao"})
+@MapperScan({"com.quantchi.web.*.dao"})
 @SpringBootApplication
 public class DMPApplication {
 

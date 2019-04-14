@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.quantchi.web.metadata.dao.MdSystemMapper">
+
+    <sql id="BaseColumn">
+        id,
+        name,
+        catalog_id,
+        remark
+    </sql>
+
+    <insert id="insert">
+        INSERT INTO md_system (<include refid="BaseColumn"/>) VALUES (#{id}, #{name}, #{catalogId}, #{remark})
+    </insert>
+    <update id="update">
+        UPDATE md_system
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="catalogId!=null">catalog_id = #{catalogId},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </set>
+    </update>
+    <delete id="delete">
+        DELETE
+        FROM md_system
+        WHERE id = #{id}
+    </delete>
+    <select id="list" resultType="com.quantchi.web.metadata.entity.MdSystem">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM md_system
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="name != null">AND name = #{name}</if>
+            <if test="catalogId != null">AND catalog_id = #{catalogId}</if>
+        </where>
+    </select>
+</mapper>

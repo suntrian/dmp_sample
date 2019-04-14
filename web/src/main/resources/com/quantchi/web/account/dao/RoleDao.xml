@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.quantchi.web.account.dao.RoleDao">
+
+    <sql id="BaseColumn">
+        id,
+        name,
+        department_id,
+        description
+    </sql>
+    <insert id="insert" keyProperty="id" useGeneratedKeys="true">
+        INSERT INTO role(
+        <include refid="BaseColumn"/>
+        ) VALUE (#{id}, #{name}, #{department_id}, #{description})
+    </insert>
+    <update id="update">
+        UPDATE role
+        <set>
+            <if test="name !=null">name = #{name},</if>
+            <if test="description!=null">description = #{description},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+    <delete id="delete">
+        DELETE
+        FROM role
+        WHERE id = #{roleId}
+    </delete>
+    <select id="list" resultType="com.quantchi.web.account.entity.Role">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM role
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="name !=null">AND name = #{name}</if>
+            <if test="departmentId!=null">AND department_id = #{departmentId}</if>
+        </where>
+    </select>
+
+
+</mapper>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.quantchi.web.account.dao.UserAccountDao">
+
+    <resultMap id="BaseResultMap" type="com.quantchi.web.account.entity.UserAccount">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="realname" property="realname" jdbcType="VARCHAR"/>
+        <result column="usercode" property="usercode" jdbcType="VARCHAR"/>
+        <result column="email" property="email" jdbcType="VARCHAR"/>
+        <result column="mobile" property="mobile" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="BaseColumn">
+        id,
+        username,
+        realname,
+        usercode,
+        email,
+        mobile,
+        status
+    </sql>
+    <sql id="BaseProperty">
+        #{id},
+        #{username},
+        #{realname},
+        #{usercode},
+        #{email},
+        #{mobile},
+        #{status}
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_account(<include refid="BaseColumn"/>, password, salt) VALUE (<include refid="BaseProperty"/>,
+        #{password}, #{salt})
+    </insert>
+    <update id="update">
+        UPDATE user_account
+        <set>
+            <if test="realname!=null">realname = #{realname},</if>
+            <if test="usercode!=null">usercode = #{usercode},</if>
+            <if test="email!=null">email = #{email},</if>
+            <if test="mobile!=null">mobile = #{mobile},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+    <delete id="delete">
+        UPDATE user_account
+        SET status = 9
+        WHERE id = #{userId}
+    </delete>
+    <select id="get" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM user_account WHERE id = #{id} LIMIT 1
+    </select>
+    <select id="list" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM user_account
+    </select>
+    <select id="search" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM user_account
+        <where>
+            <if test="id!=null">AND id = #{id}</if>
+            <if test="username!=null">AND username = #{username}</if>
+            <if test="realname!=null">AND realname = #{realname}</if>
+            <if test="mobile!=null">AND mobile = #{mobile}</if>
+            <if test="email!=null">AND email = #{email}</if>
+            <if test="status!=null">AND `status` = #{status}</if>
+            <if test="query != null">AND (username LIKE CONCAT('%',#{query},'%') OR realname LIKE
+                CONCAT('%',#{query},'%'))
+            </if>
+        </where>
+    </select>
+
+
+</mapper>
