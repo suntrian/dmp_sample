@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.quantchi.scheduler.dao.SchedulerJobMapper">
+
+    <sql id="BaseColumn">
+        id,
+        name,
+        `group`,
+        status,
+        type,
+        cron,
+        clazz,
+        bean,
+        method,
+        argument,
+        effect_time,
+        expire_time,
+        misfire_policy,
+        concurrent,
+        description,
+        created_at,
+        created_by,
+        updated_at,
+        updated_by,
+        deleted,
+        deleted_by,
+        deleted_at
+    </sql>
+
+    <sql id="BaseProperty">
+        #{${pre}id}, #{${pre}name}, #{${pre}group}, #{${pre}status}, #{${pre}type}, #{${pre}cron}, #{${pre}clazz}, #{${pre}bean}, #{${pre}method}, #{${pre}argument}, #{${pre}effectTime}, #{${pre}expireTime}, #{${pre}misfirePolicy}, #{${pre}concurrent}, #{${pre}description}, #{${pre}createdAt}, #{${pre}createdBy}, #{${pre}updatedAt}, #{${pre}updatedBy}, #{${pre}deleted}, #{${pre}deletedBy}, #{${pre}deletedAt}
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO schedule_job(<include refid="BaseColumn"/>) VALUES (
+        <include refid="BaseProperty">
+            <property name="pre" value=""/>
+        </include>
+        )
+    </insert>
+    <update id="update">
+        UPDATE schedule_job
+        <set>
+            <if test="name!=null">name = #{name},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="cron != null">cron = #{cron},</if>
+            <if test="clazz!=null">clazz = #{clazz},</if>
+            <if test="bean != null">bean = #{bean},</if>
+            <if test="method != null">method = #{method},</if>
+            <if test="argument != null">argument = #{argument},</if>
+            <if test="effectTime != null">effect_time = #{effectTime},</if>
+            <if test="expireTime != null">expire_time = #{expireTime},</if>
+            <if test="misfirePolicy != null">misfire_policy = #{misfirePolicy},</if>
+            <if test="concurrent != null">concurrent = #{concurrent},</if>
+            <if test="updatedAt!=null">updated_at = #{updatedAt},</if>
+            <if test="updatedBy!=null">updated_by = #{updatedBy},</if>
+            <if test="description != null">description = #{description},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+    <delete id="delete">
+        UPDATE schedule_job
+        SET deleted = 1 AND deleted_at = CURRENT_TIMESTAMP() AND deleted_by = #{userId}
+        WHERE id = #{jobId}
+    </delete>
+    <delete id="deleteBatch">
+        UPDATE schedule_job SET deleted = 1 AND deleted_at = CURRENT_TIMESTAMP() AND deleted_by = #{userId} WHERE id IN
+        <foreach
+                collection="jobIds" separator="," open="(" close=")" item="id">#{id}
+        </foreach>
+    </delete>
+    <select id="get" resultType="com.quantchi.scheduler.entity.SchedulerJob">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM schedule_job WHERE id = #{id} AND deleted = 0 LIMIT 1
+    </select>
+    <select id="list" resultType="com.quantchi.scheduler.entity.SchedulerJob">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM schedule_job WHERE deleted = 0
+    </select>
+    <select id="listByIds" resultType="com.quantchi.scheduler.entity.SchedulerJob">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM schedule_job WHERE deleted = 0 AND id IN
+        <foreach collection="list" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    </select>
+
+
+</mapper>

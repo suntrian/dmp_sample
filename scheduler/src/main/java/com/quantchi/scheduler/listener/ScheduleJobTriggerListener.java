@@ -1,7 +1,7 @@
 package com.quantchi.scheduler.listener;
 
+import com.quantchi.scheduler.dao.SchedulerJobMapper;
 import com.quantchi.scheduler.entity.SchedulerJob;
-import com.quantchi.scheduler.mapper.SchedulerJobMapper;
 import org.apache.commons.lang3.StringUtils;
 import org.quartz.JobExecutionContext;
 import org.quartz.SimpleTrigger;
@@ -30,12 +30,12 @@ public class ScheduleJobTriggerListener extends TriggerListenerSupport {
               return;
             }
             job.setStatus(SchedulerJob.STATUS_COMPLETE);
-            quartzJobMapper.updateByEntity(job);
+            quartzJobMapper.update(job);
         } else if (Trigger.CompletedExecutionInstruction.SET_TRIGGER_ERROR.equals(triggerInstructionCode)) {
             SchedulerJob job = (SchedulerJob) context.getMergedJobDataMap().get(SchedulerJob.JOB_KEY);
             if (job.getId()==null){return;}
             job.setStatus(SchedulerJob.STATUS_ERROR);
-            quartzJobMapper.updateByEntity(job);
+            quartzJobMapper.update(job);
         }
     }
 

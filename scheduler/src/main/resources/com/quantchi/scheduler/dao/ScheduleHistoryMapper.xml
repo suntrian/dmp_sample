@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.quantchi.scheduler.dao.ScheduleHistoryMapper">
+
+    <sql id="BaseColumn">
+        id,
+        job_id,
+        job_name,
+        start_time,
+        finish_time,
+        next_fire_time,
+        success,
+        message
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO schedule_history(<include refid="BaseColumn"/>) VALUES (NULL, #{jobId}, #{jobName}, #{startTime},
+        #{finishTime}, #{success}, #{nextFireTime}, #{success}, #{message})
+    </insert>
+    <select id="list" resultType="com.quantchi.scheduler.entity.SchedulerHistory">
+        SELECT
+        <include refid="BaseColumn"/>
+        FROM schedule_history
+        <where>
+            <if test="id!=null">AND id = #{id}</if>
+            <if test="jobId!=null">AND job_id = #{jobId}</if>
+            <if test="jobName!=null">AND job_name = #{jobName}</if>
+        </where>
+    </select>
+</mapper>

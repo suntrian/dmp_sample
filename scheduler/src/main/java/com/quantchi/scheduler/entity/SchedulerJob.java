@@ -71,24 +71,29 @@ public class SchedulerJob implements Serializable {
   private String name;
   private String status = STATUS_NONE;
   private String group;
+  private String type;
   private String cron;
-  //used for simple job
+  //used for simple job , millisecond
   private Long    interval;
   private Integer repeatCount;
-  private Integer misfirePolicy;
   private String description;
   private String clazz;
   private String bean;
   private String method;
   private Object argument;
-  private Boolean concurrent;         //就否并发执行
-  private Boolean autoStart;          //是否自动执行
-  private Date startTime;             //任务开始时间
-  private Date endTime;               //任务结束时间
+  private Boolean concurrent = false;         //是否并发执行
+  private Integer misfirePolicy = MISFIRE_INSTRUCTION_DO_NOTHING;      //
+  private Boolean autoStart = true;          //是否自动执行
+  private Date effectTime;            //任务生效时间
+  private Date expireTime;            //任务过期时间
   private Date createdAt;
   private Integer createdBy;
   private Date updatedAt;
   private Integer updatedBy;
+  private Boolean deleted;
+  private Integer deletedBy;
+  private Date deletedAt;
+
 
   public boolean isSimpleJob(){
     if (this.cron == null){
@@ -112,6 +117,7 @@ public class SchedulerJob implements Serializable {
     }
     return false;
   }
+
 
   @Override
   public boolean equals(Object obj) {

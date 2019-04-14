@@ -12,7 +12,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 @Component
 public class SchedulerManager {
@@ -40,7 +44,8 @@ public class SchedulerManager {
             JobDetail jobDetail = buildJobDetail(job);
             trigger = buildTrigger(buildScheduler(job), job).build();
             scheduler.scheduleJob(jobDetail, trigger);
-            logger.debug(messageSource.getMessage("addScheduleJob", new String[]{job.getName(), job.getCron(), trigger.getNextFireTime().toString()}, locale));
+            logger.info(messageSource.getMessage("addScheduleJob", new String[]{job.getName(), job.getCron(),
+                trigger.getNextFireTime().toString()}, locale));
         } else {
             trigger = buildTrigger(buildScheduler(job), job).build();
             scheduler.rescheduleJob(triggerKey, trigger);
@@ -61,8 +66,8 @@ public class SchedulerManager {
         TriggerBuilder triggerBuilder = TriggerBuilder.newTrigger()
                 .withIdentity(job.getName(), job.getGroup())
                 .withSchedule(scheduleBuilder);
-        if (job.getStartTime() != null) triggerBuilder.startAt(job.getStartTime());
-        if (job.getEndTime() != null) triggerBuilder.endAt(job.getEndTime());
+        if (job.getEffectTime() != null) triggerBuilder.startAt(job.getEffectTime());
+        if (job.getExpireTime() != null) triggerBuilder.endAt(job.getExpireTime());
         return triggerBuilder;
     }
 

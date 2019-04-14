@@ -49,6 +49,14 @@ public class SchedulerJobExecutor {
         return object;
     }
 
+    /**
+     * 反射获取方法，参数不可以为基本数据类型
+     *
+     * @param object 方法的执行对象
+     * @param job    job
+     * @return Method
+     * @throws NoSuchMethodException
+     */
     public Method getMethod(Object object, SchedulerJob job) throws NoSuchMethodException {
         Class clazz = object.getClass();
         Method method;

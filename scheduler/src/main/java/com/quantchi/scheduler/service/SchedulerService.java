@@ -5,9 +5,8 @@ import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
 
 import java.util.List;
-import java.util.Map;
 
-public interface schedulerService {
+public interface SchedulerService {
 
     Integer insert(SchedulerJob job) throws SchedulerException;
     Integer delete(SchedulerJob job) throws SchedulerException;

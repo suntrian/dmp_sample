@@ -1,26 +1,28 @@
 package com.quantchi.scheduler.service.impl;
 
+import com.quantchi.scheduler.dao.SchedulerJobMapper;
 import com.quantchi.scheduler.entity.SchedulerJob;
 import com.quantchi.scheduler.exception.InvalidScheduleJobException;
-import com.quantchi.scheduler.mapper.SchedulerJobMapper;
-import com.quantchi.scheduler.service.schedulerService;
 import com.quantchi.scheduler.executor.SchedulerJobExecutor;
 import com.quantchi.scheduler.executor.SchedulerManager;
+import com.quantchi.scheduler.service.SchedulerService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
-import org.quartz.Trigger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
+import java.util.Locale;
 
 @Slf4j
 @Service("quartzService")
-public class SchedulerServiceImpl implements schedulerService {
+public class SchedulerServiceImpl implements SchedulerService {
 
     @Autowired
     private SchedulerJobMapper schedulerJobMapper;
@@ -30,6 +32,11 @@ public class SchedulerServiceImpl implements schedulerService {
 
     @Autowired
     private SchedulerJobExecutor schedulerJobExecutor;
+
+    @Autowired
+    private MessageSource messageSource;
+
+    private Locale locale = LocaleContextHolder.getLocale();
 
     @PostConstruct
     public void initScheduleJob() {
@@ -44,9 +51,10 @@ public class SchedulerServiceImpl implements schedulerService {
     @Override
     public Integer insert(SchedulerJob job) throws SchedulerException {
         if (!SchedulerJobExecutor.checkJobValid(job)){
-            throw new InvalidScheduleJobException(job.getName() + "is not valid job");
+            throw new InvalidScheduleJobException(messageSource.getMessage("invalidJob", new String[]{job.getName()},
+                locale));
         }
-        Integer count = schedulerJobMapper.insertByEntity(job);
+        Integer count = schedulerJobMapper.insert(job);
         if (count == 0) return count;
         if (job.getAutoStart() || SchedulerJob.STATUS_NONE.equals(job.getStatus())) {
             schedulerManager.addJob(job);
@@ -59,24 +67,26 @@ public class SchedulerServiceImpl implements schedulerService {
         if (! SchedulerJob.STATUS_NONE.equals(schedulerManager.checkJobStatus(job))) {
             schedulerManager.deleteJob(job);
         }
-        return schedulerJobMapper.deleteById(job.getId());
+        return schedulerJobMapper.delete(job.getId(), job.getDeletedBy());
     }
 
     @Override
     public Integer delete(Integer jobId) throws SchedulerException {
-        SchedulerJob job =  schedulerJobMapper.selectOneById(jobId);
-        if(job == null)
+        SchedulerJob job = schedulerJobMapper.get(jobId);
+        if (job == null) {
             return 0;
+        }
         return delete(job);
     }
 
     @Override
     public Integer delete(List<Integer> ids) throws SchedulerException {
         List<SchedulerJob> jobs = list(ids);
+        int c = 0;
         for (SchedulerJob job: jobs) {
-            delete(job);
+            c += delete(job);
         }
-        return jobs.size();
+        return c;
     }
 
     @Override
@@ -96,22 +106,22 @@ public class SchedulerServiceImpl implements schedulerService {
                     //do nothing for now
             }
         }
-        return schedulerJobMapper.updateByEntity(job);
+        return schedulerJobMapper.update(job);
     }
 
     @Override
     public SchedulerJob get(Integer id) {
-        return schedulerJobMapper.selectOneById(id);
+        return schedulerJobMapper.get(id);
     }
 
     @Override
     public List<SchedulerJob> list() {
-        return schedulerJobMapper.selectAll();
+        return schedulerJobMapper.list();
     }
 
     @Override
     public List<SchedulerJob> list(List<Integer> ids) {
-        return schedulerJobMapper.selectListByIdList(ids);
+        return schedulerJobMapper.listByIds(ids);
     }
 
     @Override

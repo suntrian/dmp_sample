@@ -142,19 +142,25 @@ CREATE TABLE schedule_job
   description    VARCHAR(1024)                        null COMMENT '调度任务描述',
   created_at     TIMESTAMP  default CURRENT_TIMESTAMP null,
   created_by     INTEGER                              null,
+  updated_at     TIMESTAMP COMMENT '更新时间',
+  updated_by     INTEGER COMMENT '更新人',
+  deleted        TINYINT COMMENT '是否已删除',
+  deleted_by     INTEGER COMMENT '删除人',
+  deleted_at     TIMESTAMP COMMENT '删除时间',
   CONSTRAINT UNIQUE (`group`, name)
 ) COMMENT '调试任务表';
 
 DROP TABLE IF EXISTS schedule_history;
 CREATE TABLE IF NOT EXISTS schedule_history
 (
-  id          INTEGER AUTO_INCREMENT PRIMARY KEY,
-  job_id      INTEGER   NOT NULL,
-  job_name    VARCHAR(32),
-  start_time  TIMESTAMP NOT NULL COMMENT '任务开始时间',
-  finish_time TIMESTAMP COMMENT '任务结束时间',
-  success     TINYINT(1) DEFAULT 0 COMMENT '任务执行结果，成功/失败',
-  message     TEXT       DEFAULT null COMMENT '任务返回信息'
+  id             INTEGER AUTO_INCREMENT PRIMARY KEY,
+  job_id         INTEGER   NOT NULL,
+  job_name       VARCHAR(32),
+  start_time     TIMESTAMP NOT NULL COMMENT '任务开始时间',
+  finish_time    TIMESTAMP COMMENT '任务结束时间',
+  next_fire_time TIMESTAMP COMMENT '下次触发时间',
+  success        TINYINT(1) DEFAULT 0 COMMENT '任务执行结果，成功/失败',
+  message        TEXT       DEFAULT null COMMENT '任务返回信息'
 ) ENGINE = ARCHIVE COMMENT '任务触发执行纪录表';
 
 DROP TABLE IF EXISTS `option`;
