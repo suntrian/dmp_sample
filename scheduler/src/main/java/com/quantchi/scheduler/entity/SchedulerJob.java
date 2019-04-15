@@ -101,7 +101,7 @@ public class SchedulerJob implements Serializable {
       this.repeatCount = 0;
       return true;
     }
-    Pattern pattern = Pattern.compile("(\\d+)\\s*[x* _\\-|/#]\\s*(\\d+)");
+    Pattern pattern = Pattern.compile("^(\\d+)\\s*[Xx* _\\-|#]\\s*(\\d+)$");
     Matcher matcher = pattern.matcher(this.cron.trim());
     if (matcher.find()) {
       interval = Long.valueOf(matcher.group(1));
@@ -118,6 +118,9 @@ public class SchedulerJob implements Serializable {
     return false;
   }
 
+  public void setSimpleJobCron(long interval, int repeatCount){
+    this.cron = interval + "x" + repeatCount;
+  }
 
   @Override
   public boolean equals(Object obj) {

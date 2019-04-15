@@ -75,8 +75,13 @@ public class SchedulerJobExecutor {
             throws IllegalAccessException, InstantiationException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException {
         Object object = getCaller(job);
         Method method = getMethod(object, job);
-        return method.invoke(object, job.getArgument());
-
+        if (method.getParameterCount()==0){
+            return method.invoke(object);
+        } else if (method.getParameterCount() == 1){
+            return method.invoke(object, job.getArgument());
+        } else {
+            throw new IllegalArgumentException("multi parameters are unsupported");
+        }
     }
 
 }

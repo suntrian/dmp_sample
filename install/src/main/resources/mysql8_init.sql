@@ -1,3 +1,4 @@
+DROP DATABASE IF EXISTS dmp;
 CREATE DATABASE IF NOT EXISTS dmp;
 USE dmp;
 
@@ -33,7 +34,7 @@ CREATE TABLE IF NOT EXISTS user_profile
 DROP TABLE IF EXISTS user_login_record;
 CREATE TABLE IF NOT EXISTS user_login_record
 (
-  login_time TIMESTAMP NOT NULL COMMENT '用户登录时间',
+  login_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '用户登录时间',
   user_id    INTEGER   NOT NULL,
   login_ip   VARCHAR(32) COMMENT '登录IP',
   status     TINYINT(1) DEFAULT 1 COMMENT '用户登录状态，成功/失败',
@@ -135,18 +136,18 @@ CREATE TABLE schedule_job
   bean           VARCHAR(64)                          null,
   method         VARCHAR(64)                          null,
   argument       BLOB                                 null,
-  effect_time    TIMESTAMP                            null COMMENT '任务生效时间',
-  expire_time    TIMESTAMP                            null COMMENT '任务失效时间',
+  effect_time    DATETIME                            null COMMENT '任务生效时间',
+  expire_time    DATETIME                            null COMMENT '任务失效时间',
   misfire_policy tinyint(1) DEFAULT 0 COMMENT 'Misfire 策略,0不处理，1立即执行，2？',
   concurrent     tinyint(1) DEFAULT 0                 null COMMENT '是否允许并发',
   description    VARCHAR(1024)                        null COMMENT '调度任务描述',
-  created_at     TIMESTAMP  default CURRENT_TIMESTAMP null,
+  created_at     DATETIME  COMMENT '创建时间',
   created_by     INTEGER                              null,
-  updated_at     TIMESTAMP COMMENT '更新时间',
+  updated_at     TIMESTAMP  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   updated_by     INTEGER COMMENT '更新人',
   deleted        TINYINT COMMENT '是否已删除',
   deleted_by     INTEGER COMMENT '删除人',
-  deleted_at     TIMESTAMP COMMENT '删除时间',
+  deleted_at     DATETIME  COMMENT '删除时间',
   CONSTRAINT UNIQUE (`group`, name)
 ) COMMENT '调试任务表';
 
@@ -156,9 +157,9 @@ CREATE TABLE IF NOT EXISTS schedule_history
   id             INTEGER AUTO_INCREMENT PRIMARY KEY,
   job_id         INTEGER   NOT NULL,
   job_name       VARCHAR(32),
-  start_time     TIMESTAMP NOT NULL COMMENT '任务开始时间',
-  finish_time    TIMESTAMP COMMENT '任务结束时间',
-  next_fire_time TIMESTAMP COMMENT '下次触发时间',
+  start_time     DATETIME NOT NULL COMMENT '任务开始时间',
+  finish_time    DATETIME COMMENT '任务结束时间',
+  next_fire_time DATETIME COMMENT '下次触发时间',
   success        TINYINT(1) DEFAULT 0 COMMENT '任务执行结果，成功/失败',
   message        TEXT       DEFAULT null COMMENT '任务返回信息'
 ) ENGINE = ARCHIVE COMMENT '任务触发执行纪录表';
@@ -216,9 +217,9 @@ CREATE TABLE IF NOT EXISTS md_datasource
   description VARCHAR(256) COMMENT '数据源说明',
   system_id   VARCHAR(64) COMMENT '数据源所属系统',
   created_by  INTEGER COMMENT '数据源添加人',
-  created_at  TIMESTAMP COMMENT '数据源添加时间',
+  created_at  DATETIME  COMMENT '数据源添加时间',
   updated_by  INTEGER COMMENT '数据源信息修改人',
-  updated_at  TIMESTAMP COMMENT '数据源信息修改时间',
+  updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  COMMENT '数据源信息修改时间',
   FOREIGN KEY (system_id) REFERENCES md_system (id) ON UPDATE CASCADE ON DELETE CASCADE
 ) COMMENT '数据源表';
 
@@ -317,11 +318,11 @@ CREATE TABLE IF NOT EXISTS std_metrics
   description      VARCHAR(512) COMMENT '描述',
   version          VARCHAR(32) COMMENT '所属版本',
   created_by       INTEGER COMMENT '创建人',
-  created_at       TIMESTAMP COMMENT '创建时间',
+  created_at       DATETIME  COMMENT '创建时间',
   updated_by       INTEGER COMMENT '修改人',
-  updated_at       TIMESTAMP COMMENT '修改时间',
+  updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  COMMENT '修改时间',
   deleted_by       INTEGER COMMENT '删除人',
-  deleted_at       TIMESTAMP COMMENT '删除时间'
+  deleted_at       DATETIME COMMENT '删除时间'
 ) COMMENT '指标标准表';
 
 

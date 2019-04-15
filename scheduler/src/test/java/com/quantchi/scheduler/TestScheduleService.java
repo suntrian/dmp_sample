@@ -8,6 +8,7 @@ import org.junit.runner.RunWith;
 import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Profile;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +33,7 @@ public class TestScheduleService {
         voidJob.setGroup(groupName);
         voidJob.setCron("0 0/1 * * * ?");
         voidJob.setMethod("voidPrint");
-        voidJob.setMisfirePolicy(SchedulerJob.MISFIRE_INSTRUCTION_FIRE_NOW);
+        voidJob.setMisfirePolicy(SchedulerJob.MISFIRE_INSTRUCTION_SMART_POLICY);
         schedulerService.insert(voidJob);
 
         Thread.sleep(1000 * 60 * 2);
