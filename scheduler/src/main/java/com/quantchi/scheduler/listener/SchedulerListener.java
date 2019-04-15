@@ -17,13 +17,19 @@ public class SchedulerListener extends SchedulerListenerSupport {
 
     @Override
     public void triggerFinalized(Trigger trigger) {
-        // do nothing because nothing got through a trigger
+        log.debug("{} job finished", trigger.getJobKey().getName());
     }
 
 
 
     @Override
     public void schedulerError(String msg, SchedulerException cause) {
-        log.info(msg);
+        log.debug(msg);
+    }
+
+
+    @Override
+    public void schedulerShutdown() {
+        log.debug("Scheduler Shutdown");
     }
 }

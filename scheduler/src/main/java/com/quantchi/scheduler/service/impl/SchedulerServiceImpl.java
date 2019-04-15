@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -54,6 +55,7 @@ public class SchedulerServiceImpl implements SchedulerService {
             throw new InvalidScheduleJobException(messageSource.getMessage("invalidJob", new String[]{job.getName()},
                 locale));
         }
+        job.setCreatedAt(new Date());
         Integer count = schedulerJobMapper.insert(job);
         if (count == 0) return count;
         if (job.getAutoStart() || SchedulerJob.STATUS_NONE.equals(job.getStatus())) {
@@ -106,6 +108,7 @@ public class SchedulerServiceImpl implements SchedulerService {
                     //do nothing for now
             }
         }
+        job.setUpdatedAt(new Date());
         return schedulerJobMapper.update(job);
     }
 

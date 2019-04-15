@@ -74,7 +74,7 @@ public class SchedulerManager {
     private ScheduleBuilder buildScheduler(SchedulerJob job) {
         if (job.isSimpleJob()){
             SimpleScheduleBuilder simpleScheduleBuilder = SimpleScheduleBuilder.simpleSchedule();
-            simpleScheduleBuilder.withIntervalInMilliseconds(job.getInterval()).withRepeatCount(job.getRepeatCount());
+            simpleScheduleBuilder.withIntervalInMilliseconds(job.getInterval()).withRepeatCount(job.getRepeatCount() - 1);
             if (job.getMisfirePolicy() == null){
                 return simpleScheduleBuilder.withMisfireHandlingInstructionIgnoreMisfires();
             }

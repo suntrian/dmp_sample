@@ -1,6 +1,10 @@
 package com.quantchi.scheduler;
 
+import com.quantchi.scheduler.listener.SchedulerJobListener;
+import com.quantchi.scheduler.listener.SchedulerJobTriggerListener;
+import com.quantchi.scheduler.listener.SchedulerListener;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.Bean;
@@ -12,11 +16,15 @@ public class SchedulerConfiguration implements ApplicationContextAware {
 
     private static ApplicationContext context;
 
+    @Autowired
     @Bean("scheduler")
-    public SchedulerFactoryBean schedulerFactoryBean(){
+    public SchedulerFactoryBean schedulerFactoryBean(SchedulerListener schedulerListener,
+                                                     SchedulerJobListener schedulerJobListener,
+                                                     SchedulerJobTriggerListener triggerListener) {
         SchedulerFactoryBean schedulerFactoryBean = new SchedulerFactoryBean();
-        schedulerFactoryBean.setSchedulerListeners();
-        schedulerFactoryBean.setGlobalJobListeners();
+        schedulerFactoryBean.setSchedulerListeners(schedulerListener);
+        schedulerFactoryBean.setGlobalTriggerListeners(triggerListener);
+        schedulerFactoryBean.setGlobalJobListeners(schedulerJobListener);
         return schedulerFactoryBean;
     }
 

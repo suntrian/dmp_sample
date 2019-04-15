@@ -15,7 +15,7 @@
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO schedule_history(<include refid="BaseColumn"/>) VALUES (NULL, #{jobId}, #{jobName}, #{startTime},
-        #{finishTime}, #{success}, #{nextFireTime}, #{success}, #{message})
+        #{finishTime}, #{nextFireTime}, #{success}, #{message})
     </insert>
     <select id="list" resultType="com.quantchi.scheduler.entity.SchedulerHistory">
         SELECT

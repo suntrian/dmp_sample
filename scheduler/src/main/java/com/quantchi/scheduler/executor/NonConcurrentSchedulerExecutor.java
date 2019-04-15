@@ -5,7 +5,6 @@ import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
-@SuppressWarnings("Duplicates")
 @DisallowConcurrentExecution
 public class NonConcurrentSchedulerExecutor extends ConcurrentSchedulerExecutor {
 
