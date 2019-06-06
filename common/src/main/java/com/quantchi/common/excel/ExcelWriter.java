@@ -3,10 +3,8 @@ package com.quantchi.common.excel;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
-import org.apache.poi.xssf.usermodel.XSSFDataValidationHelper;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,10 +36,10 @@ import java.util.stream.Stream;
  *        ┠┈┈┈┤ c ├┈┈┈┴┈┈┈┨
  *        ┃ d │   │   e   ┃
  *        ┗┉┉┉┷┉┉┉┷┉┉┉┉┉┉┉┛
- * 支持List, Map 和 任意bean数据类型。 bean需实现 Serializable接口
+ * 支持List, Map 和 任意bean数据类型。
  *
  * @author suntrian
- * @date 2010.1.04
+ * @date 2019.1.04
  * @since 1.5.9
  */
 @SuppressWarnings("all")
@@ -78,6 +76,11 @@ public class ExcelWriter {
   //复杂表头的合并策略，true:水平合并优先,false:垂直合并优先
   private List<Boolean> titleMergeHorizonFirst;
 
+  private List<List<Integer>> columnWidths;
+
+  private List<Integer> defaultWidths;
+  private Integer defaultWidth;
+
   private List<Map<Integer, List<String>>> cellConstraint;
 
   private List<List<?>> data;
@@ -89,7 +92,8 @@ public class ExcelWriter {
   private DataFormat dataFormat;
 
   private Workbook newWorkbook(){
-    return new XSSFWorkbook();  //new SXSSFWorkbook(); // 无法读，导致无法在postHandler里面设置单元格属性
+    //return new XSSFWorkbook();
+    return new SXSSFWorkbook(); // 无法读，导致无法在postHandler里面设置单元格属性
   }
 
   public ExcelWriter setSheetCount(int size){
@@ -124,7 +128,27 @@ public class ExcelWriter {
     return this;
   }
 
-  public ExcelWriter setBodyCellStyle(){
+  public ExcelWriter setWidth(int columnIndex, int width){
+    this.columnWidths = setList(this.columnWidths, setList(null, columnIndex, width, null), sheetCount);
+    return this;
+  }
+
+  public ExcelWriter setWidth(int sheetNum, int columnIndex, int width){
+    this.columnWidths = setList(this.columnWidths, sheetNum-1, setList(null, columnIndex, width, null), Collections.emptyList());
+    return this;
+  }
+
+  public ExcelWriter setDefaultWidth(int sheetNum, int width){
+    this.defaultWidths = setList(this.defaultWidths, sheetNum-1, width, null, sheetCount);
+    return this;
+  }
+
+  public ExcelWriter setDefaultWidth(int width){
+    this.defaultWidth = width;
+    return this;
+  }
+
+  private ExcelWriter setBodyCellStyle(){
     if (this.workbook==null){
       this.workbook = newWorkbook();
     }
@@ -450,7 +474,7 @@ public class ExcelWriter {
 
             }
           }
-        } else if (Serializable.class.isAssignableFrom(clazz)){
+        } else {
           if (getList(this.sortedFields,i, Collections.EMPTY_LIST).size() > 0){
             //指定了输出属性及顺序，则按指定的顺序输出
             Map<String, Method> methodMap = new HashMap<>(this.sortedFields.get(i).size());
@@ -476,8 +500,6 @@ public class ExcelWriter {
             this.sortedFields = setList(this.sortedFields, i, fields, Collections.EMPTY_LIST, sheetCount);
             this.beanGetMethods = setList(this.beanGetMethods, i, methodMap, Collections.EMPTY_MAP, sheetCount);
           }
-        } else {
-          throw new IllegalArgumentException("不支持的数据类型");
         }
         this.type = setList(this.type, i, clazz, null, sheetCount);
       }
@@ -530,14 +552,16 @@ public class ExcelWriter {
       } else {
         sheet = workbook.createSheet(sheetName);
       }
+      Map<CellRangeAddress, CellStyle> styles = getList(this.customStyle, sheetIndex, Collections.emptyMap());
       int titleRows = 0;
       List<?> title ;
       if ((title = getList(this.titles, sheetIndex, Collections.emptyList())).size()>0){
-        titleRows = exportTitle(sheet, title, getList(this.titleMergeHorizonFirst, sheetIndex, true));
+        titleRows = exportTitle(sheet, title, styles, getList(this.titleMergeHorizonFirst, sheetIndex, true));
       }
       if (this.data.size()==0){
         continue;
       }
+
       List<?> sheetData = getList(this.data, sheetIndex, Collections.EMPTY_LIST);
       for (int rowIndex = titleRows; rowIndex < sheetData.size() + titleRows; rowIndex++){
         Row row = sheet.createRow(rowIndex);
@@ -545,10 +569,9 @@ public class ExcelWriter {
         List<Object> rowDataList = flatData(rowData, getList(this.type, sheetIndex, List.class), getList(this.sortedFields, sheetIndex, Collections.EMPTY_LIST), getList(this.beanGetMethods, sheetIndex, Collections.EMPTY_MAP));
         for (int cellIndex = 0 ; cellIndex < rowDataList.size(); cellIndex++){
           Cell cell = row.createCell(cellIndex);
-          setCell(cell, rowDataList.get(cellIndex), bodyStyle);
+          setCell(cell, rowDataList.get(cellIndex), getCellStyle(styles, cell, this.bodyStyle));
         }
       }
-
       postHandler(sheetIndex, sheet, titleRows, sheetData.size());
 
     }
@@ -576,9 +599,10 @@ public class ExcelWriter {
     } else {
       sheet = workbook.createSheet(sheetNames);
     }
+    Map<CellRangeAddress, CellStyle> styles = getList(this.customStyle, 0, Collections.emptyMap());
     int titleRows = 0;
     if (titles.size()>0){
-      titleRows = exportTitle(sheet, titles, true);
+      titleRows = exportTitle(sheet, titles, styles, true);
     }
     int[] dataRows = new int[1];
     final Map<String, Method> methodMap = getList(this.beanGetMethods, 0, Collections.EMPTY_MAP);
@@ -593,7 +617,7 @@ public class ExcelWriter {
       Row row = sheet.createRow(sheet.getLastRowNum()+1);
       for (int cellIndex = 0 ; cellIndex < l.size(); cellIndex++){
         Cell cell = row.createCell(cellIndex);
-        setCell(cell, l.get(cellIndex), bodyStyle);
+        setCell(cell, l.get(cellIndex), getCellStyle(styles, cell, this.bodyStyle));
       }
     });
     postHandler(0, sheet, titleRows, dataRows[0]);
@@ -602,18 +626,17 @@ public class ExcelWriter {
 
   private void postHandler(int sheetIndex, Sheet sheet , int titleRows, int dataRows){
     if (true == getList(this.autoCellWidth, sheetIndex, false)){
-      Row row = sheet.getRow(sheet.getFirstRowNum());
+      if (sheet instanceof SXSSFSheet){
+        ((SXSSFSheet)sheet).trackAllColumnsForAutoSizing();
+      }
+      Row row = sheet.getRow(sheet.getLastRowNum());
       for (int i = 0; i < row.getLastCellNum(); i++){
-        try {
           sheet.autoSizeColumn(i);
-        } catch (Exception e) {
-
-        }
       }
     }
     if (getList(this.cellConstraint, sheetIndex, Collections.EMPTY_MAP).size()>0){
       Map<Integer, List<String>> constraints = this.cellConstraint.get(sheetIndex);
-      DataValidationHelper helper = new XSSFDataValidationHelper((XSSFSheet) sheet);
+      DataValidationHelper helper = sheet.getDataValidationHelper();
       for (Map.Entry<Integer, List<String>> entry: constraints.entrySet()){
         // 加载下拉列表内容
         String[] constraintValues = new String[entry.getValue().size()];
@@ -629,23 +652,18 @@ public class ExcelWriter {
         sheet.addValidationData(dataValidation);
       }
     }
-
-    if (getList(this.customStyle, sheetIndex, Collections.EMPTY_MAP).size()>0){
-      for (Map.Entry<CellRangeAddress, CellStyle> map: this.customStyle.get(sheetIndex).entrySet()){
-        CellRangeAddress addresses = map.getKey();
-        CellStyle style = map.getValue();
-        for (int r = addresses.getFirstRow()>=0?addresses.getFirstRow():0; r <= (addresses.getLastRow()<=sheet.getLastRowNum()?addresses.getLastRow():sheet.getLastRowNum()); r++){
-          for (int l = addresses.getFirstColumn()>=0?addresses.getFirstColumn():0;
-               l <= (addresses.getLastColumn()<=sheet.getRow(r).getLastCellNum()?addresses.getLastColumn():sheet.getRow(r).getLastCellNum());
-               l++){
-            Cell cell = sheet.getRow(r).getCell(l);
-            //使用同一个style, 与不同的cellstyle合并可能会产生意想不到的结果
-            mergeCellStyle(style, cell.getCellStyle());
-            cell.setCellStyle(style);
+    int i = 0;
+    if (getList(this.defaultWidths, sheetIndex, null)!=null){
+      sheet.setDefaultColumnWidth(getList(this.defaultWidths, sheetIndex, null));
+    } else if (defaultWidth!=null){
+      sheet.setDefaultColumnWidth(defaultWidth);
           }
-
+    for (Integer width: getList(this.columnWidths, sheetIndex, Collections.emptyList())) {
+      i++;
+      if (width == null) {
+        continue;
         }
-      }
+      sheet.setColumnWidth(i-1, width);
     }
   }
 
@@ -665,7 +683,7 @@ public class ExcelWriter {
    * @param title
    * @return 表头占用的行数
    */
-  private int exportTitle(Sheet sheet, List<?> title, Boolean mergeHorizonFirst){
+  private int exportTitle(Sheet sheet, List<?> title, Map<CellRangeAddress, CellStyle> customStyles, Boolean mergeHorizonFirst){
     if (title==null || title.size() == 0) {
       return 0;
     }
@@ -682,21 +700,20 @@ public class ExcelWriter {
         continue;
       }
       if (titleCol instanceof String){
-        setCell(row.createCell(i), titleCol, titleStyle);
+        Cell cell = row.createCell(i);
+        setCell(cell, titleCol, getCellStyle(customStyles, cell, this.titleStyle));
         rowCount[i] = 1;
-      }if (titleCol instanceof List){
+      } else if (titleCol instanceof List){
          int curRowCount = ((List)titleCol).size();
          for (int j = rows.size(); j< curRowCount; j++){
            rows.add(sheet.createRow(j));
          }
          for (int j = 0; j < curRowCount; j++){
-           setCell(rows.get(j).createCell(i), ((List)titleCol).get(j), titleStyle);
+           Cell cell = rows.get(j).createCell(i);
+           setCell(cell, ((List)titleCol).get(j), getCellStyle(customStyles, cell, this.titleStyle));
          }
          rowCount[i] = curRowCount;
          maxRowCount = curRowCount>maxRowCount?curRowCount:maxRowCount;
-      } else {
-        setCell(row.createCell(i), titleCol, titleStyle);
-        rowCount[i] = 1;
       }
     }
     if (maxRowCount == 1){
@@ -869,7 +886,7 @@ public class ExcelWriter {
         }
       }
       return result;
-    } else if (Serializable.class.isAssignableFrom(type)){
+    } else {
       List<Object> result = new ArrayList<>(this.sortedFields.size());
       for (String key: sortedFields){
         if (key==null||"".equals(key.trim())){
@@ -880,7 +897,6 @@ public class ExcelWriter {
       }
       return result;
     }
-    return new ArrayList<>();
   }
 
   private void setCell(Cell cell, Object data){
@@ -926,7 +942,9 @@ public class ExcelWriter {
    * @param styleTo
    * @param styleFrom
    */
-  private void mergeCellStyle(CellStyle styleTo, CellStyle styleFrom){
+  private CellStyle mergeCellStyle(CellStyle styleFrom, CellStyle styleTo){
+    if (styleFrom == null) return styleTo;
+    else if (styleTo == null) return styleFrom;
     if (styleTo.getBorderBottom().equals(BorderStyle.NONE) && !styleFrom.getBorderBottom().equals(BorderStyle.NONE)){
       styleTo.setBorderBottom(styleFrom.getBorderBottom());
     }
@@ -950,6 +968,16 @@ public class ExcelWriter {
     }
     if (styleTo.getFillForegroundColor() == IndexedColors.AUTOMATIC.index && styleFrom.getFillForegroundColor() != IndexedColors.AUTOMATIC.index) {
       styleTo.setFillForegroundColor(styleFrom.getFillForegroundColor());
+    }
+    return styleTo;
+  }
+
+  private CellStyle getCellStyle(Map<CellRangeAddress, CellStyle> cellStyleMap, Cell cell, CellStyle defaultStyle){
+    if (cellStyleMap.size()>0){
+      CellStyle style = cellStyleMap.entrySet().stream().filter(i->i.getKey().isInRange(cell)).map(i->i.getValue()).reduce(defaultStyle, (a,b)->mergeCellStyle(a,b));
+      return style;
+    } else {
+      return defaultStyle;
     }
   }
 
@@ -1025,6 +1053,28 @@ public class ExcelWriter {
         return str;   //同一对象
       }
     }
+  }
+
+  public List<List<String>> transposition(List<List<String>> data){
+    if (data.size()==0){
+      return data;
+    }
+    int rows = data.size();
+    int cols = data.stream().map(List::size).max(Comparator.comparingInt(i -> i)).get();
+    List<List<String>> result = new ArrayList<>(cols);
+    for (int i = 0; i < cols; i++ ){
+      result.add(new ArrayList<>(rows));
+      for (int j = 0; j < rows; j++){
+        result.get(i).add(null);
+      }
+    }
+    for (int i = 0; i < rows; i++){
+      List<String> line = data.get(i);
+      for (int j = 0; j < cols; j++){
+        result.get(j).set(i, line.get(j));
+      }
+    }
+    return result;
   }
 
 }

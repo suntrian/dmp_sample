@@ -14,12 +14,10 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -35,9 +33,7 @@ import java.util.stream.StreamSupport;
 public class ExcelReader {
 
   private int sheetCount = 1;
-  private final int MaxRowNumInXLS = 65536;
-  private final int MaxRowNumInXlSX = 1048576;
-  private final int EmptyRowExitThreshold = 100;
+  private final int emptyRowExitThreshold = 100;
   private boolean isXlsx = true;
 
   private Workbook workbook;
@@ -51,7 +47,10 @@ public class ExcelReader {
   private List<Map<String, Method>> classSetters;
   //每个sheet的标题行数，读取内容时跳过标题行
   private List<Integer> skipRows;
+  //限制输出多少行的内容
   private List<Integer> limitRows;
+  //当有多行标题时，指定匹配的标题行
+  private List<Integer> titleRows;
   //输出的sheet, 1 based
   private Set<Integer> sheetRead = new HashSet<>();
   //输出的列，KEY:EXCEL中的列序号0based, VALUE：输入的列序号0based
@@ -63,6 +62,13 @@ public class ExcelReader {
   private Pattern datetimePattern = Pattern.compile("(?:(?<year>(?:[1-9]\\d)?\\d{2})[/-])?(?<mon>[0-1]?\\d)[/-](?<day>[0-3]?\\d)\\s+(?<hour>[0-2]?\\d):(?<min>[0-5]?\\d)(?::(?<sec>[0-5]?\\d))?");
   private Pattern datePattern = Pattern.compile("((?<year>(?:[1-9]\\d)?\\d{2})[/-])?(?<mon>[0-1]?\\d)[/-](?<day>[0-3]?\\d)");
   private Pattern timePattern = Pattern.compile("(?<hour>[0-2]?\\d):(?<min>[0-5]?\\d)(?::(?<sec>[0-5]?\\d))?");
+
+  public ExcelReader() {
+  }
+
+  public ExcelReader(File excel) throws IOException, InvalidFormatException {
+    init(excel);
+  }
 
   public ExcelReader setClass(Class<?> clazz){
     this.columnClass = setListValue(this.columnClass, -1, clazz, null, sheetCount);
@@ -112,6 +118,24 @@ public class ExcelReader {
 
   public ExcelReader setLimitRows(int limitRows){
     this.limitRows = setListValue(this.limitRows, -1, limitRows, 0, sheetCount);
+    return this;
+  }
+
+  public ExcelReader setTitleRow(int sheetNum, int titleRow){
+    this.sheetRead.add(sheetNum);
+    this.titleRows = setListValue(this.titleRows, sheetNum-1, titleRow, 0, sheetCount);
+    return this;
+  }
+
+  public ExcelReader setTitleRow(int titleRow){
+    this.titleRows = setListValue(this.titleRows, -1, titleRow, 0, sheetCount);
+    return this;
+  }
+
+  public ExcelReader setTitleRow(String sheetName, int titleRow){
+    Map<String, Object> map = sheetNameMap.getOrDefault(sheetName, new HashMap<>());
+    map.put("titleRows", titleRow);
+    sheetNameMap.put(sheetName, map);
     return this;
   }
 
@@ -191,6 +215,13 @@ public class ExcelReader {
     return parse();
   }
 
+  public ResultSet read() throws NoSuchMethodException, InstantiationException, IllegalAccessException, IOException, InvocationTargetException {
+    if (this.workbook == null) {
+      throw new IllegalAccessException("Use Constructor or read method for an excelfile");
+    }
+    return parse();
+  }
+
   /**
    * use more memory then read from file or filechannel
    * @param inputStream
@@ -216,6 +247,53 @@ public class ExcelReader {
       return parseToStream(sheetToRead);
     }
     throw new IllegalArgumentException("unSupport to read dual sheet by Stream");
+  }
+
+  public <T> Stream<T> streamOf(int sheetNum1Based) throws NoSuchMethodException, IllegalAccessException {
+    if (this.workbook == null) {
+      throw new IllegalAccessException("Use Constructor or read method for an excelfile");
+    }
+    return parseToStream(sheetNum1Based);
+  }
+
+  public <T> Stream<T> streamOf(String sheetNamePattern) throws IllegalAccessException, NoSuchMethodException {
+    if (this.workbook == null) {
+      throw new IllegalAccessException("Use Constructor or read method for an excelfile");
+    }
+    for (int i = 0 ; i < this.workbook.getNumberOfSheets(); i++){
+      if (this.workbook.getSheetName(i).matches(sheetNamePattern)){
+        return parseToStream(i+1);
+      }
+    }
+    throw new IllegalStateException("can not find a sheet name matches " + sheetNamePattern);
+  }
+
+  public List<String> getSheetNames() throws IllegalAccessException {
+    if (this.workbook == null) {
+      throw new IllegalAccessException("Use Constructor or read method for an excelfile");
+    }
+    return Stream.iterate(0, i->i+1).limit(this.workbook.getNumberOfSheets()).map(i->this.workbook.getSheetName(i)).collect(Collectors.toList());
+  }
+
+  public List<String> getTitles(int sheetIndex1Based, int titleRow) throws IllegalAccessException {
+    if (this.workbook == null){
+      throw new IllegalAccessException("Use Constructor or read method for an excelfile");
+    }
+    return getStringRow(this.workbook.getSheetAt(sheetIndex1Based-1).getRow( titleRow));
+  }
+
+  public List<String> getTitles(String sheetNamePattern, int titleRow) throws IllegalAccessException {
+    if (this.workbook == null){
+      throw new IllegalAccessException("Use Constructor or read method for an excelfile");
+    }
+    return Stream.iterate(0, i->i+1)
+            .limit(this.workbook.getNumberOfSheets())
+            .filter(i->this.workbook.getSheetName(i).matches(sheetNamePattern))
+            .map(i->this.workbook.getSheetAt(i))
+            .map(i->i.getRow(titleRow))
+            .map(this::getStringRow)
+            .findFirst()
+            .orElse(Collections.emptyList());
   }
 
   private void init(File file) throws IOException, InvalidFormatException {
@@ -275,6 +353,7 @@ public class ExcelReader {
             this.excelColumns = this.setListValue(this.excelColumns,i, (List<String>) settings.getOrDefault("columns", Collections.emptyList()), Collections.emptyList(), this.sheetCount);
             this.skipRows = this.setListValue(this.skipRows, i, (int)settings.getOrDefault("skipRows", 0), 0, this.sheetCount);
             this.limitRows = this.setListValue(this.limitRows, i, (int)settings.getOrDefault("limitRows", 0), 0, this.sheetCount);
+            this.titleRows = this.setListValue(this.titleRows, i, (int)settings.getOrDefault("titleRows", 0), 0, this.sheetCount);
             break;
           }
         }
@@ -298,7 +377,8 @@ public class ExcelReader {
       List<String> exportTitles = getListValue(this.excelTitles, i, Collections.emptyList());
       if (exportTitles.size()>0){
         //EXCEL的标题名称
-        List<String> titles = getStringRow(this.workbook.getSheetAt(i).getRow(0));
+        int titleRow = getListValue(this.titleRows, i, 0);
+        List<String> titles = getStringRow(this.workbook.getSheetAt(i).getRow(titleRow));
         Map<Integer,Integer> exportCols = new HashMap<>(exportTitles.size());
         for (int m = 0; m < exportTitles.size(); m++){
           if (exportTitles.get(m) == null || "".equals(exportTitles.get(m).trim())){ continue;}
@@ -336,7 +416,7 @@ public class ExcelReader {
             throw new IllegalStateException("more than one title row exists");
           }
         }
-      } else if (Serializable.class.isAssignableFrom(clazz)) {
+      } else {
         List<String> columns;
         if ((columns = getListValue(this.excelColumns, i, Collections.emptyList())).size() == 0) {
           throw new IllegalStateException("未指定输出列的属性");
@@ -360,8 +440,6 @@ public class ExcelReader {
           throw new NoSuchMethodException("未找到方法:" + col);
         }
         this.classSetters = setListValue(this.classSetters, i, methodMap, Collections.emptyMap(), sheetCount);
-      } else {
-
       }
     }
   }
@@ -369,7 +447,20 @@ public class ExcelReader {
   private List<String> getStringRow(Row row){
     List<String> list = new ArrayList<>(row.getLastCellNum());
     for (int l = 0; l < row.getLastCellNum(); l++) {
-      list.add(row.getCell(l).getStringCellValue());
+      if (row.getCell(l)==null){
+        // fixme at 19/05/17 getLastCellNum不一定是准确的，也有可能包含空白列
+        list.add(null);
+      } else {
+        list.add(castToType(getCellValue(row.getCell(l)), String.class));
+      }
+    }
+    //从尾巴开始剔除空白
+    for (int i = list.size()-1; i>=0; i--){
+      if (list.get(i)==null){
+        list.remove(i);
+      } else {
+        return list;
+      }
     }
     return list;
   }
@@ -418,7 +509,7 @@ public class ExcelReader {
     for (int rowIndex = titleRows; rowIndex <= rowLimit; rowIndex ++){
       Row row = sheet.getRow(rowIndex);
       if (row == null){
-        if ( ++emptyRowCount >= EmptyRowExitThreshold){
+        if ( ++emptyRowCount >= emptyRowExitThreshold){
           break;
         }
         continue;
@@ -428,10 +519,6 @@ public class ExcelReader {
       T rowData = (T)readRow(row, colMap, clazz, sheetColumns, sheetMethods);
       if (rowData != null) {
         sheetData.add(rowData);
-      } else {
-        if ( ++ emptyRowCount >= EmptyRowExitThreshold){
-          break;
-        }
       }
     }
     postHandler();
@@ -439,13 +526,10 @@ public class ExcelReader {
   }
 
   @SuppressWarnings("Duplicates")
-  private<T> Stream<T> parseToStream(final int sheetNum) throws NoSuchMethodException {
-    if (!this.isXlsx){
-      throw new IllegalStateException("unSupport to stream");
-    }
+  private<T> Stream<T> parseToStream(final int sheetNum1Based) throws NoSuchMethodException {
     preHandler();
-    if (sheetNum > this.sheetCount){ throw new IllegalArgumentException("sheet num overflow"); }
-    int sheetIndex = sheetNum -1;
+    if (sheetNum1Based > this.sheetCount){ throw new IllegalArgumentException("sheet num overflow"); }
+    int sheetIndex = sheetNum1Based -1;
     final Class<T> sheetClass = getListValue(this.columnClass, sheetIndex, null);
     final List<String> sheetColumns = getListValue(this.excelColumns, sheetIndex, Collections.emptyList());
     final Map<String, Method> sheetMethods = getListValue(this.classSetters, sheetIndex, Collections.emptyMap());
@@ -456,41 +540,16 @@ public class ExcelReader {
       }
       if (Map.class.isAssignableFrom(sheetClass)){
 
-      } else if (Serializable.class.isAssignableFrom(sheetClass)){
+      } else {
         if (sheetMethods.size() == 0){
           throw new IllegalStateException("property set method not found");
         }
       }
     }
     Sheet sheet = this.workbook.getSheetAt(sheetIndex);
-    boolean reachedMaxRow = false;
-    int lastRowNum = sheet.getLastRowNum();
-    if (lastRowNum<0){
-      return Stream.empty();
-    } else if ( (isXlsx?MaxRowNumInXlSX:MaxRowNumInXLS) == lastRowNum){
-      //达到了excel文件的最大行
-      reachedMaxRow = true;
-    }
     int titleRows = getListValue(this.skipRows, sheetIndex, 0);
     Map<Integer, Integer> colMap = getListValue(this.columnMap, sheetIndex, Collections.emptyMap());
-    Stream<Row> rowStream;
-    if (reachedMaxRow) {
-      int r = 0, emptyRowCount = 0;
-      Row row;
-      Stream.Builder<Row> builder = Stream.builder();
-      while (emptyRowCount<EmptyRowExitThreshold){
-        row = sheet.getRow(r++);
-        if (row == null){
-          emptyRowCount++;
-          continue;
-        }
-        builder.add(row);
-      }
-      rowStream = builder.build();
-    } else {
-      rowStream = StreamSupport.stream(Spliterators.spliteratorUnknownSize(sheet.rowIterator(), 0), false);
-    }
-    Stream<T> stream = rowStream
+    Stream<T> stream = StreamSupport.stream(Spliterators.spliteratorUnknownSize(sheet.rowIterator(), 0), false)
         .skip(titleRows)
         .map(i-> {
           try {
@@ -640,70 +699,70 @@ public class ExcelReader {
     throw new ClassCastException(date + "cannot be cast to Date");
   }
 
-  private Object castToType(Object obj,  Class type){
+  private<T> T castToType(Object obj,  Class<T> type){
     if (obj == null) return null;
     if (obj instanceof String){
       if (String.class.isAssignableFrom(type)){
-        return obj;
+        return (T) ((String) obj).trim();
       } else if (Integer.class.isAssignableFrom(type)){
-        return Integer.valueOf((String) obj);
+        return (T) Integer.valueOf((String) obj);
       } else if (Double.class.isAssignableFrom(type)) {
-        return Double.parseDouble((String) obj);
+        return (T) Double.valueOf((String) obj);
       } else if (Boolean.class.isAssignableFrom(type)){
         boolean t = "true".equalsIgnoreCase(((String) obj).trim())
             || "1".equals(((String) obj).trim())
             || "yes".equalsIgnoreCase(((String) obj).trim())
             || "T".equalsIgnoreCase(((String) obj).trim())
             || "是".equals(((String) obj).trim());
-        if (t){return true;}
+        if (t){return (T) Boolean.valueOf(true);}
         boolean f = "false".equalsIgnoreCase(((String) obj).trim())
             || "0".equals(((String) obj).trim())
             || "no".equalsIgnoreCase(((String) obj).trim())
             || "F".equalsIgnoreCase(((String) obj).trim())
             || "否".equals(((String) obj).trim());
-        if (f){ return false;}
+        if (f){ return (T) Boolean.valueOf(false);}
         return null;
       } else if (Date.class.isAssignableFrom(type)){
-        return parseDate((String) obj);
+        return (T) parseDate((String) obj);
       }
     } else if (obj instanceof Double){
       if (Double.class.isAssignableFrom(type)){
-        return obj;
+        return (T) obj;
       }
       if (String.class.isAssignableFrom(type)){
         if ((Double) obj -((Double) obj).longValue()==0){
-          return String.valueOf(((Double) obj).longValue());
+          return (T) String.valueOf(((Double) obj).longValue());
         }
-        return obj.toString();
+        return (T) obj.toString();
       } else if (Integer.class.isAssignableFrom(type)){
-        return ((Double) obj).intValue();
+        return (T) (Integer)((Double) obj).intValue();
       } else if (Date.class.isAssignableFrom(type)){
-        return DateUtil.getJavaDate((Double) obj);
+        return (T) DateUtil.getJavaDate((Double) obj);
       } else if (Boolean.class.isAssignableFrom(type)){
-        return !obj.equals(0);
+        return (T) Boolean.valueOf(!obj.equals(0));
       }
     } else if (obj instanceof Boolean){
       if (String.class.isAssignableFrom(type)){
-        return (Boolean)obj?"true":"false";
+        return (T) ((Boolean)obj?"true":"false");
       } else if (Integer.class.isAssignableFrom(type)){
-        return (Boolean)obj?1:0;
+        return (T) Integer.valueOf ((Boolean)obj?1:0);
       } else if (Double.class.isAssignableFrom(type)){
-        return (Boolean)obj?1.0:0.0;
+        return (T) Double.valueOf ((Boolean)obj?1.0:0.0);
       } else if (Date.class.isAssignableFrom(type)){
         throw new ClassCastException("Cannot cast Boolean to Date");
       }
     } else if (obj instanceof Date){
       if (String.class.isAssignableFrom(type)){
-        return String.format("%tc", obj);
+        return (T) String.format("%tc", obj);
       } else if (Integer.class.isAssignableFrom(type)){
-        return (int)((Date)obj).getTime();
+        return (T) Integer.valueOf ((int)((Date)obj).getTime());
       } else if (Double.class.isAssignableFrom(type)){
-        return (double)((Date)obj).getTime();
+        return (T) (Double.valueOf((double)((Date)obj).getTime()));
       } else if (Date.class.isAssignableFrom(type)){
-        return obj;
+        return (T) obj;
       }
     }
-    return obj;
+    return type.cast(obj);
   }
 
   private void postHandler() throws IOException {
@@ -784,6 +843,23 @@ public class ExcelReader {
 
     public<T> List<T> get(String sheetName){
       return (List<T>) resultMapBySheetIndex.getOrDefault(sheetNameMap.get(sheetName), Collections.emptyList());
+    }
+
+    public<T> List<T> find(String regex){
+      int index = -1, matched = 0;
+      for (String key: sheetNameMap.keySet()){
+        if (key.matches(regex)){
+          index = sheetNameMap.get(key);
+          matched ++;
+        }
+      }
+      if (index==-1){
+        return Collections.emptyList();
+      }
+      if (matched>1){
+        throw new IllegalStateException("dual sheet matches");
+      }
+      return (List<T>) resultMapBySheetIndex.getOrDefault(index, Collections.emptyList());
     }
 
     public<T> List<List<T>> values(){

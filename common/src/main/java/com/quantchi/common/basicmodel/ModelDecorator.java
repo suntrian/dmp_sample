@@ -92,7 +92,11 @@ public class ModelDecorator implements Serializable {
   }
 
   private<T extends Serializable> Diff<ModelElement<T>> compareElementList(List<ModelElement<T>> s, List<ModelElement<T>> t, final int level) {
-    return new Diff<ModelElement<T>>().diff(s, t,(ModelElement<T> e) -> (Comparable)this.getFunctionMap().get(this.functionLevel0Based.get(level)).getKeyGetter().apply(e.getElement()), ModelElement::getVersion);
+    return new Diff<ModelElement<T>>().diff(s, t,
+            (ModelElement<T> e) -> this.getFunctionMap().get(this.functionLevel0Based.get(level)).getKeyGetter().apply(e.getElement()),
+            // 比对自身的属性及子节点的属性，version代码的是子节点的属性hash
+            // 这里变更的逻辑比较乱了，原本设想的是version代表的是子节点的变更，然后可以将子节点的版本保存下来，进行快速比对。但是这里因为采用递归的方式，子节点的变更仍然要再获取属性再比对一次
+            (ModelElement<T> e) -> Stream.of(this.getFunctionMap().get(this.functionLevel0Based.get(level)).getPropertyGetter()).map(f->f.apply(e.getElement())).map(i->i==null?"": i.toString()).collect(Collectors.joining(split)) + split + e.getVersion());
   }
 
   private<T extends Serializable, PK extends Comparable> int compareElement(ModelElement<T> s, ModelElement<T> t, int level) {
@@ -103,7 +107,7 @@ public class ModelDecorator implements Serializable {
     } else if (propertyGetters.length == 1){
       PK tPK = propertyGetters[0].apply(t.getElement());
       PK sPK = propertyGetters[0].apply(s.getElement());
-      return tPK==null?(sPK==null?0:-1) : tPK.compareTo(sPK);
+      return tPK==null?(sPK==null?0:-1) : sPK==null? 1 : tPK.compareTo(sPK);
     } else {
       String meaninglessS = Stream.of(propertyGetters).map(f->f.apply(s.getElement())).map(m->m==null?"":m.toString()).collect(Collectors.joining(split));
       String meaninglessT = Stream.of(propertyGetters).map(f->f.apply(t.getElement())).map(o->o==null?"":o.toString()).collect(Collectors.joining(split));
